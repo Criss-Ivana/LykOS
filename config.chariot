@@ -1,0 +1,62 @@
+source/kernel {
+    url: "kernel"
+    type: "local"
+}
+
+source/limine {
+    url: "https://codeberg.org/Limine/Limine.git"
+    type: "git"
+    revision: "aaf327b4157f6aac471149356cf8298519f6df09"
+}
+
+source/support {
+    url: "support"
+    type: "local"
+}
+
+custom/kernel {
+    dependencies: [
+        image/meson image/nasm image/clang image/llvm image/lld
+        source/kernel
+    ]
+    configure: <sh>
+        meson setup \
+            --buildtype=release \
+            --cross-file=$SOURCES_DIR/kernel/cross-files/x86_64.ini \
+            --prefix=$PREFIX \
+            -Dtarget_arch=x86_64 \
+            $SOURCES_DIR/kernel
+    </sh>
+    build: <sh>
+        ninja -j$PARALLELISM
+    </sh>
+    install: <sh>
+        DESTDIR=$INSTALL_DIR ninja install
+    </sh>
+}
+
+custom/image {
+    dependencies: [
+        custom/kernel
+        image/xorriso
+        source/limine source/support
+    ]
+    build: <sh>
+        mkdir -p iso_root/EFI/BOOT
+
+        cp $CUSTOM_DIR/kernel/usr/bin/kernel-x86_64.elf iso_root
+
+        cp $SOURCES_DIR/support/limine.conf ./iso_root
+        cp $SOURCES_DIR/limine/limine-uefi-cd.bin ./iso_root
+        cp $SOURCES_DIR/limine/BOOTX64.EFI ./iso_root/EFI/BOOT
+
+    	xorriso -as mkisofs \
+    		-no-emul-boot -boot-load-size 4 -boot-info-table \
+    		--efi-boot limine-uefi-cd.bin \
+    		-efi-boot-part --efi-boot-image --protective-msdos-label \
+    		iso_root -o lykos.iso
+    </sh>
+    install: <sh>
+        install lykos.iso $INSTALL_DIR
+    </sh>
+}
