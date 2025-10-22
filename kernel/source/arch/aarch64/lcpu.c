@@ -1,21 +1,20 @@
 #include "arch/lcpu.h"
-#include "msr.h"
 
 #include <stdint.h>
 
 void lcpu_halt()
 {
-    asm volatile("hlt");
+    asm volatile("wfi");
 }
 
 void lcpu_int_mask()
 {
-    asm volatile ("cli");
+    asm volatile("msr daifset, #0b1111");
 }
 
 void lcpu_int_unmask()
 {
-    asm volatile ("sti");
+    asm volatile("msr daifclr, #0b1111");
 }
 
 bool lcpu_int_enabled()
@@ -27,17 +26,17 @@ bool lcpu_int_enabled()
 
 void lcpu_relax()
 {
-    asm volatile ("pause");
+    asm volatile("yield");
 }
 
 size_t lcpu_thread_reg_read()
 {
-    uint64_t gs;
-    asm volatile("mov %%gs:0, %0" : "=r"(gs));
-    return gs;
+    size_t ret;
+    asm volatile("mrs %0, tpidr_el1" : "=r"(ret));
+    return ret;
 }
 
 void lcpu_thread_reg_write(size_t t)
 {
-    msr_write(MSR_GS_BASE, t);
+    asm volatile("msr tpidr_el1, %0" : : "r"(t));
 }

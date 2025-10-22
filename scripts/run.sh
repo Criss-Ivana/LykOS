@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
-LYKOS_ISO=".chariot-cache/recipes/custom/image/install/lykos.iso"
 ARCH="${1:-x86_64}"      # Fallback to x86_64 if no arch is provided.
+LYKOS_ISO=".chariot-cache/recipes/custom/image/opt/arch/${ARCH}/install/lykos.iso"
 OVMF="qemu/ovmf-${ARCH}"
 
 QEMU_FLAGS=(

@@ -14,7 +14,6 @@ c_flags = [
     '-ffreestanding',
     '-fno-stack-protector',
     '-fno-stack-check',
-    '-mcmodel=kernel',
     '-flto',
     '-fPIE',
     '-O2',
@@ -42,6 +41,7 @@ if target_arch == 'x86_64'
         '-m64',
         '-mgeneral-regs-only',
         '-mno-red-zone',
+        '-mcmodel=kernel',
     ]
     ld_flags += [
         '-m', 'elf_x86_64',
@@ -50,6 +50,7 @@ elif target_arch == 'aarch64'
     c_flags += [
         '-target', 'aarch64-unknown-none',
         '-mgeneral-regs-only',
+
     ]
     ld_flags += [
         '-m', 'aarch64elf',

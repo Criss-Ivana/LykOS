@@ -1,5 +1,4 @@
 c_files += files(
     'lcpu.c',
-    'msr.c',
     'serial.c',
 )

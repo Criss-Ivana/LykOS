@@ -14,4 +14,4 @@ void lcpu_relax();
 
 size_t lcpu_thread_reg_read();
 
-size_t lcpu_thread_reg_write();
+void lcpu_thread_reg_write(size_t t);
