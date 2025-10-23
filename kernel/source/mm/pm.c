@@ -186,5 +186,5 @@ void pm_init()
         }
     }
 
-    log(LOG_INFO, "Buddy allocator initialized.");
+    log(LOG_INFO, "Phyiscal memory allocator initialized.\n");
 }

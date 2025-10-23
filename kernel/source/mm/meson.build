@@ -1,4 +1,6 @@
 c_files += files(
-    'buddy.c',
+    'heap.c',
+    'kmem.c',
     'mm.c',
+    'pm.c',
 )

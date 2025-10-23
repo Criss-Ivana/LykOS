@@ -19,11 +19,13 @@ thread_status_t;
 
 struct thread
 {
-    size_t id;
-    thread_status_t status;
+    size_t tid;
     proc_t *owner;
 
-    cpu_t *curr_cpu;
+    int priority;
+    thread_status_t status;
+
+    cpu_t *assigned_cpu;
 
     list_node_t proc_thread_list_node;
     list_node_t sched_thread_list_node;

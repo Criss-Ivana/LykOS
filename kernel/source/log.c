@@ -1,5 +1,6 @@
-#include "arch/serial.h"
 #include "log.h"
+
+#include "arch/serial.h"
 #include "utils/printf.h"
 
 void log(log_level_t level, const char *format, ...)

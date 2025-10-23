@@ -11,7 +11,7 @@ proc_state_t;
 
 typedef struct proc
 {
-    size_t id;
+    size_t pid;
     proc_state_t state;
     bool kernel;
 

@@ -1,3 +1,3 @@
 c_files += files(
-    'mlfq.c',
+    'sched.c',
 )

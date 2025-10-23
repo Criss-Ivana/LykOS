@@ -1,12 +1,14 @@
 project(
     'kernel',
-    'c',
+    ['c', 'nasm'],
     version: '0.1',
     meson_version: '>=0.62.0',
     default_options: ['c_std=gnu23', 'warning_level=2'],
 )
 
 target_arch = get_option('target_arch')
+
+nasm = find_program('nasm', required: true)
 
 c_flags = [
     '-Wall',
@@ -23,6 +25,11 @@ c_flags = [
 ]
 
 as_flags = [
+    '-g',
+]
+
+nasm_flags = [
+    '-f', 'elf64',
     '-g',
 ]
 
@@ -59,6 +66,7 @@ endif
 
 c_files = []
 as_files = []
+asm_files = []
 
 limine_header = custom_target(
     'limine.h',
@@ -75,7 +83,18 @@ include_directories = include_directories('include')
 
 subdir('source')
 
-sources = c_files + as_files + [limine_header]
+asm_objs = []
+foreach f : asm_files
+    asm_objs += custom_target(
+        f + '_obj',
+        input: f,
+        output: f + '.o',
+        command: [nasm, nasm_flags, '-o', '@OUTPUT@', '@INPUT@'],
+        depend_files: f,
+    )
+endforeach
+
+sources = c_files + as_files + asm_objs + [limine_header]
 
 output_static_lib = static_library(
     'kernel',
