@@ -25,4 +25,6 @@ void __entry()
     heap_init();
 
     log(LOG_INFO, "Kernel end.");
+
+    
 }
