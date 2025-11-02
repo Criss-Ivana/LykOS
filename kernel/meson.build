@@ -11,15 +11,24 @@ target_arch = get_option('target_arch')
 nasm = find_program('nasm', required: true)
 
 c_flags = [
+    # Warnings
+    '-Werror',
     '-Wall',
     '-Wextra',
+    '-Wno-unused-parameter',
+    '-Wno-unused-function',
+    '-Wvla',
+    '-Wimplicit-fallthrough',
+    # Environment
     '-ffreestanding',
     '-fno-stack-protector',
     '-fno-stack-check',
-    '-flto',
     '-fPIE',
+    # Optimization
+    '-flto',
     '-O2',
     '-g',
+    # Features
     '-DPRINTF_DISABLE_SUPPORT_FLOAT',
     '-DLIMINE_API_REVISION=3',
 ]

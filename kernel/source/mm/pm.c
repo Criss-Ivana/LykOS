@@ -115,7 +115,7 @@ void pm_init()
     {
         struct limine_memmap_entry *e = bootreq_memmap.response->entries[i];
 
-        log(LOG_DEBUG, "[%2lu] type=%-2d base=%#018lx length=%#010lx (%4lu MiB + %4lu KiB) \n",
+        log(LOG_DEBUG, "[%2lu] type=%-2d base=%#018lx length=%#010lx (%4lu MiB + %4lu KiB)",
             i,
             e->type,
             e->base,
@@ -186,5 +186,5 @@ void pm_init()
         }
     }
 
-    log(LOG_INFO, "Phyiscal memory allocator initialized.\n");
+    log(LOG_INFO, "Phyiscal memory allocator initialized.");
 }

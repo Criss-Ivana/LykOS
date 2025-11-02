@@ -1,5 +1,6 @@
 subdir('arch/' + target_arch)
 subdir('mm')
+subdir('sched')
 subdir('sync')
 subdir('utils')
 

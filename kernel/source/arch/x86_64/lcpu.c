@@ -39,5 +39,5 @@ size_t lcpu_thread_reg_read()
 
 void lcpu_thread_reg_write(size_t t)
 {
-    msr_write(MSR_GS_BASE, t);
+    msr_write(MSR_GS_BASE, (uint64_t)t);
 }

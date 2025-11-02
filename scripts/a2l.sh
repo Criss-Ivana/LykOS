@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 
-ADDRESS=0x$1
+ARCH="${1:-x86_64}"
+ADDRESS=0x$2
 
-addr2line -fai -e .chariot-cache/recipes/custom/kernel/install/kernel.elf $ADDRESS
+addr2line -fai -e $(chariot --option arch=${ARCH} path custom/kernel)/usr/bin/kernel-${ARCH}.elf $ADDRESS
