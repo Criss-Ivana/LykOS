@@ -1,75 +1,174 @@
-#include <vfs.h>
-#include "mm/heap.h"
-#include <log.h>
-
 // VFS LIST MANAGEMENT
 
+list_t vfs_list = LIST_INIT;
+list_t mount_point_list = LIST_INIT;
 
-void print_vfs_list() 
+void print_vfs_list()
 {
     vfs_t *vfs;
-    size_t count = 0;
-    list_for_each_entry(vfs, &vfs_list, vfs_list) {
+    FOREACH(n, vfs_list)
+    {
+        vfs = LIST_GET_CONTAINER(n, vfs_t, list_node);
         log(LOG_INFO, "VFS %zu: block size = %zu, flags = %d", count, vfs->block_size, vfs->flags);
         count++;
     }
 }
 
-vfs_t *vfs_alloc(const char *name, vfs_ops_t *ops, size_t block_size, int flags) 
+
+vfs_t *vfs_alloc(const char *name, vfs_ops_t *ops, size_t block_size, int flags)
 {
-    vfs_t *vfs = (vfs_t *)heap_alloc(sizeof(vfs_t));
-    if (!vfs) {
-        log(LOG_INFO, "Failed to allocate memory for VFS");
-        return NULL;
+    vfs_t *vfs = heap_alloc(sizeof(vfs_t));
+    vfs = (vfs_t){
+        .name = name;
+        .vfs_op = ops;
+        .block_size = block_size;
+        .flags = flags;
+        .covered_vn = NULL;
+        .private_data = NULL;
     }
-
-    strncpy(vfs->name, name, VFS_MAX_NAME_LEN);
-    vfs->vfs_op = ops;
-    vfs->block_size = block_size;
-    vfs->flags = flags;
-    vfs->covered_vn = NULL;
-    vfs->private_data = NULL;
-
-    INIT_LIST_HEAD(&vfs->vfs_list);
-    add_vfs_list(vfs);
+    list_append(&vfs_list, &vfs->list_node);
 
     return vfs;
 }
 
 // MOUNT POINT LIST MANAGEMENT
 
-
-void print_mount_point_list(void) 
+void print_mount_point_list()
 {
-    mount_point_t *mount_point;
     size_t count = 0;
-    
-    list_for_each_entry(mount_point, &mount_points_list, mount_list) {
+    mount_point_t *mp;
+    FOREACH(n, mount_points_list)
+    {
+        mp = LIST_GET_CONTAINER(n, mount_point_t, list_node);
         log(LOG_INFO, "Mount Point %zu: Path = %s, VFS = %s, Root Vnode = %p",
-            count, mount_point->path, mount_point->vfs->name, (void*)mount_point->mount_vn);
+            count, mp->path, mp->vfs->name, mp->mount_vn);
         count++;
     }
 }
 
 // FILE PATH TO VFS PARENT
 
-list_t mount_point_list = LIST_INIT;
-
-int vfs_mount(vfs_t *vfs, const char *path)
+trie_node_t *create_trie_node(const char *name)
 {
-    mount_point_t *mp = heap_alloc(sizeof(mount_point_t));
-    mp = (mount_point_t) {
-        .path = path,
-        .vfs = vfs
-    }
-    list_append(&mount_point_list, &mp->list_node);
+    trie_node_t *node = (trie_node_t *)heap_alloc(sizeof(trie_node_t));
+
+    strncpy(node->node_name, name, PATH_MAX_NAME_LEN);
+    node->sibling = NULL;
+    node->child = NULL;
+    node->mount_point = NULL;
+    node->is_end_of_path = 0;
+
+    return node;
 }
 
-mount_point_t* filepath_to_mountpoint(const char *path, struct list_head *vfs)
+trie_node_t *insert_path_into_trie(trie_node_t *root, const char *path, mount_point_t *mpt)
 {
-    FOREACH (n, mount_point_list)
+    char path_copy[PATH_MAX_NAME_LEN], *segment, *aux;
+    int final = 0;
+    if (strcmp(path, "/") == 0)
+        return root;
+    strncpy(path_copy, path, PATH_MAX_NAME_LEN);
+    segment = path_copy + 1;
+    aux = strchr(segment, '/');
+    if (aux == NULL)
+        final = 1;
+    else
+        *aux = NULL;
+
+    trie_node_t *parent = root, *new_node, *current, *prev;
+
+    while (segment != NULL)
     {
-        mount_point_t *mp = LIST_GET_CONTAINER(n, mount_point_t, list_node);
-        
+        current = parent->child;
+        prev = NULL;
+
+        while (current != NULL && strcmp(current->node_name, segment) != 0)
+        {
+            prev = current;
+            current = current->sibling;
+        }
+
+        if (current != NULL)
+        {
+            parent = current;
+        }
+        else
+        {
+            new_node = create_trie_node(segment);
+            if (prev != NULL)
+                prev->sibling = new_node;
+            else
+                parent->child = new_node;
+
+            parent = new_node;
+        }
+
+        if (final)
+            break;
+        segment = aux + 1;
+        aux = strchr(segment, '/');
+        if (aux == NULL)
+            final = 1;
+        else
+            *aux = NULL;
     }
+    parent->is_end_of_path = 1;
+    parent->mount_point = mpt;
+
+    return parent;
+}
+
+mount_point_t *filepath_to_mountpoint(const char *path, trie_node_t *root)
+{
+    char path_copy[PATH_MAX_NAME_LEN], *segment, *aux int final = 0;
+    if (strcmp(path, "/") == 0)
+        return root;
+    strncpy(path_copy, path, PATH_MAX_NAME_LEN);
+    segment = path_copy + 1;
+    aux = strchr(segment, '/');
+    if (aux == NULL)
+        final = 1;
+    else
+        *aux = NULL;
+
+    trie_node_t *parent = root, *current;
+    mount_point_t *match = NULL;
+
+    while (segment != NULL)
+    {
+        current = parent->child;
+
+        while (current != NULL && strcmp(current->node_name, segment) != 0)
+            current = current->sibling;
+
+        if (current == NULL)
+            return match;
+
+        if (current->mount_point != NULL)
+            match = current->mount_point;
+
+        parent = current;
+        if (final)
+            break;
+        segment = aux + 1;
+        aux = strchr(segment, '/');
+        if (aux == NULL)
+            final = 1;
+        else
+            *aux = NULL;
+    }
+    return match;
+}
+
+/*
+ * Veneer layer.
+ */
+
+mount_point_t vfs_mount(vfs_t *vfs, const char *path)
+{
+    mount_point_t *mp = heap_alloc(sizeof(mount_point_t));
+    mp = (mount_point_t){
+        .path = path,
+        .vfs = vfs} list_append(&mount_point_list, &mp->list_node);
+    return mp;
 }
