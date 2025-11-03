@@ -1,5 +1,7 @@
 #include "utils/string.h"
 
+#include <mm/heap.h>
+
 // Copying
 
 char *strcpy(char *dest, const char *src)
@@ -117,17 +119,15 @@ size_t strlen(const char *s)
     return len;
 }
 
-// #include <mm/heap.h>
+char *strdup(const char *s)
+{
+    if (!s)
+        return NULL;
 
-// char *strdup(const char *s)
-// {
-//     if (!s)
-//         return NULL;
+    char *dup = heap_alloc(strlen(s) + 1);
+    if (!dup)
+        return NULL;
+    strcpy(dup, s);
 
-//     char *dup = heap_alloc(strlen(s) + 1);
-//     if (!dup)
-//         return NULL;
-//     strcpy(dup, s);
-
-//     return dup;
-// }
+    return dup;
+}

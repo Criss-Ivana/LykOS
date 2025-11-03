@@ -58,5 +58,5 @@ void heap_init()
     for (int i = 0; i < 8; i++)
         kmem_cache_intialize(&g_caches[i], g_cache_names[i], g_cache_sizes[i]);
 
-    log(LOG_DEBUG, "Heap initialized\n");
+    log(LOG_DEBUG, "Heap initialized.");
 }

@@ -57,5 +57,3 @@ void kmem_cache_intialize(kmem_cache_t *cache, const char *name, size_t size);
 void *kmem_alloc_cache(kmem_cache_t *cache);
 
 void kmem_free_cache(kmem_cache_t *cache, void *obj);
-
-void kmem_init();

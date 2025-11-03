@@ -3,4 +3,5 @@ c_files += files(
     'kmem.c',
     'mm.c',
     'pm.c',
+    'vm.c',
 )

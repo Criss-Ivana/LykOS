@@ -12,5 +12,7 @@ void log(log_level_t level, const char *format, ...)
     vsnprintf(buf, 256, format, vargs);
     serial_write(buf);
 
+    serial_write("\n");
+
     va_end(vargs);
 }

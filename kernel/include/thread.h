@@ -19,6 +19,8 @@ thread_status_t;
 
 struct thread
 {
+    thread_t *self;
+
     size_t tid;
     proc_t *owner;
 
