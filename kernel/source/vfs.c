@@ -18,8 +18,9 @@ void print_vfs_list()
 vfs_t *vfs_alloc(const char *name, vfs_ops_t *ops, size_t block_size, int flags)
 {
     vfs_t *vfs = heap_alloc(sizeof(vfs_t));
-    vfs = (vfs_t){
-        .name = name;
+
+    vfs = (vfs_t) {
+        .name = .strdup(name);
         .vfs_op = ops;
         .block_size = block_size;
         .flags = flags;
@@ -50,20 +51,21 @@ void print_mount_point_list()
 
 trie_node_t *create_trie_node(const char *name)
 {
-    trie_node_t *node = (trie_node_t *)heap_alloc(sizeof(trie_node_t));
+    trie_node_t *node = heap_alloc(sizeof(trie_node_t));
 
-    strncpy(node->node_name, name, PATH_MAX_NAME_LEN);
-    node->sibling = NULL;
-    node->child = NULL;
-    node->mount_point = NULL;
-    node->is_end_of_path = 0;
-
+    node = (trie_node_t) {
+        .name = strdup(name);
+        .sibling = NULL;
+        .child = NULL;
+        .mount_point = NULL;
+        .is_end_of_path = 0;
+    };
     return node;
 }
 
-trie_node_t *insert_path_into_trie(trie_node_t *root, const char *path, mount_point_t *mpt)
-{
-    char path_copy[PATH_MAX_NAME_LEN], *segment, *aux;
+trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt) //root global
+{ //orice functie care nu va fi apelata din exterior o fac statica
+    char *path_copy = strdup(path), *segment, *aux;
     int final = 0;
     if (strcmp(path, "/") == 0)
         return root;
@@ -118,12 +120,11 @@ trie_node_t *insert_path_into_trie(trie_node_t *root, const char *path, mount_po
     return parent;
 }
 
-mount_point_t *filepath_to_mountpoint(const char *path, trie_node_t *root)
+mount_point_t *filepath_to_mountpoint(const char *path)
 {
-    char path_copy[PATH_MAX_NAME_LEN], *segment, *aux int final = 0;
     if (strcmp(path, "/") == 0)
         return root;
-    strncpy(path_copy, path, PATH_MAX_NAME_LEN);
+    char *path_copy = strdup(path), *segment, *aux int final = 0;
     segment = path_copy + 1;
     aux = strchr(segment, '/');
     if (aux == NULL)

@@ -26,4 +26,6 @@ void __entry()
     vm_init();
 
     log(LOG_INFO, "Kernel end.");
+
+    while(true);
 }
