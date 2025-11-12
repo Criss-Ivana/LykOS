@@ -1,9 +1,10 @@
 #pragma once
 
+#include "arch/thread.h"
 #include "proc.h"
 #include "utils/list.h"
 
-typedef struct cpu cpu_t;
+typedef struct smp_cpu cpu_t;
 typedef struct proc proc_t;
 typedef struct thread thread_t;
 
@@ -19,12 +20,12 @@ thread_status_t;
 
 struct thread
 {
-    thread_t *self;
+    thread_context_t context;
 
     size_t tid;
     proc_t *owner;
 
-    int priority;
+    size_t priority;
     thread_status_t status;
 
     cpu_t *assigned_cpu;
@@ -33,3 +34,5 @@ struct thread
     list_node_t sched_thread_list_node;
     size_t ref_count;
 };
+
+thread_t *thread_create(proc_t *proc, uintptr_t entry);

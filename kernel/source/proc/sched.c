@@ -1,18 +1,17 @@
-#include "sched.h"
+#include "proc/sched.h"
 
 #include "arch/lcpu.h"
+#include "proc/smp.h"
+#include "proc/thread.h"
 #include "sync/spinlock.h"
-#include "thread.h"
 #include "utils/list.h"
 
 #define MLFQ_LEVELS 16
 
-list_t ready_queues[MLFQ_LEVELS];
-spinlock_t slock;
+static list_t ready_queues[MLFQ_LEVELS] = { [0 ... MLFQ_LEVELS - 1] = LIST_INIT };
+static spinlock_t slock = SPINLOCK_INIT;
 
 // Private API
-
-extern __attribute__((naked)) void __sched_context_switch(thread_t *old, thread_t *new);
 
 static thread_t *pick_next_thread()
 {
@@ -20,29 +19,27 @@ static thread_t *pick_next_thread()
         if (!list_is_empty(&ready_queues[lvl]))
             return LIST_GET_CONTAINER(list_pop_head(&ready_queues[lvl]), thread_t, sched_thread_list_node);
 
-    return NULL;
-}
-
-static void thread_switch(thread_t *old, thread_t *new)
-{
-    lcpu_thread_reg_write((size_t)new);
-    __sched_context_switch(old, new);
+    return sched_get_curr_thread()->assigned_cpu->idle_thread;
 }
 
 static void sched_preemt()
 {
     spinlock_acquire(&slock);
     thread_t *old = sched_get_curr_thread();
-    if (old->priority < MLFQ_LEVELS)
+    if (old->priority < MLFQ_LEVELS - 1)
         old->priority++;
     thread_t *new = pick_next_thread();
     spinlock_release(&slock);
 
-    thread_switch(old, new);
+    thread_context_switch(&old->context, &new->context);
 }
 
+// This function will be called from the assembly function `__thread_context_switch`.
 void sched_drop(thread_t *t)
 {
+    if (t == t->assigned_cpu->idle_thread)
+        return;
+
     spinlock_acquire(&slock);
     list_append(&ready_queues[t->priority], &t->sched_thread_list_node);
     spinlock_release(&slock);
@@ -69,12 +66,5 @@ void sched_yield()
     thread_t *new = pick_next_thread();
     spinlock_release(&slock);
 
-    thread_switch(old, new);
-}
-
-// Init
-
-void sched_init()
-{
-
+    thread_context_switch(&old->context, &new->context);
 }

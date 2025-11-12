@@ -1,9 +1,9 @@
-global __sched_context_switch
+global __thread_context_switch
 extern sched_drop
 
-%define THREAD_RSP_OFFSET 8
+%define THREAD_RSP_OFFSET 16
 
-__sched_context_switch:
+__thread_context_switch:
     push rax
     push rbx
     push rcx
