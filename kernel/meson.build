@@ -92,18 +92,7 @@ include_directories = include_directories('include')
 
 subdir('source')
 
-asm_objs = []
-foreach f : asm_files
-    asm_objs += custom_target(
-        f + '_obj',
-        input: f,
-        output: f + '.o',
-        command: [nasm, nasm_flags, '-o', '@OUTPUT@', '@INPUT@'],
-        depend_files: f,
-    )
-endforeach
-
-sources = c_files + as_files + asm_objs + [limine_header]
+sources = c_files + as_files + asm_files + [limine_header]
 
 output_static_lib = static_library(
     'kernel',
