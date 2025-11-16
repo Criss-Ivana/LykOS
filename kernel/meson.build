@@ -34,7 +34,7 @@ c_flags = [
     '-g',
     # Features
     '-DPRINTF_DISABLE_SUPPORT_FLOAT',
-    '-DLIMINE_API_REVISION=3',
+    '-DLIMINE_API_REVISION=4',
 ]
 
 as_flags = [
