@@ -7,7 +7,6 @@ OVMF="qemu/ovmf-${ARCH}"
 QEMU_FLAGS=(
     -m 2G
     -smp 4
-    -accel kvm
     -no-shutdown
     -no-reboot
     -cdrom "$LYKOS_ISO"

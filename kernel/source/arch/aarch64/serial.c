@@ -1,10 +1,12 @@
-#include <arch/serial.h>
+#include "arch/serial.h"
+#include "hhdm.h"
 
-#define UART0_BASE 0x09000000UL
-#define UARTDR     (*(volatile unsigned int *)(UART0_BASE + 0x0))
+#include <stdint.h>
+
+#define UART_BASE 0x9000000ull
 
 void serial_write(const char *str)
 {
-    while (*str)
-        UARTDR = *str;
+    // while (*str)
+    //     *(volatile uint8_t *)(UART_BASE + HHDM) = *str++;
 }

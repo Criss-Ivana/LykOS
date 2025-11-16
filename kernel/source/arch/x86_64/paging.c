@@ -50,7 +50,6 @@ int paging_map_page(paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t 
     pte_t *pml1;
 
     uint64_t _prot = translate_prot(prot);
-    // bool is_higher_half = vaddr >= HHDM ? true : false;
 
     // PML4 -> PML3
     if (pml4[pml4e] & PTE_PRESENT)

@@ -1,12 +1,16 @@
 project(
     'kernel',
-    ['c', 'nasm'],
+    ['c'],
     version: '0.1',
-    meson_version: '>=0.62.0',
+    meson_version: '>=0.64.0',
     default_options: ['c_std=gnu23', 'warning_level=2'],
 )
 
 target_arch = get_option('target_arch')
+
+if target_arch == 'x86_64'
+    add_languages('nasm')
+endif
 
 nasm = find_program('nasm', required: true)
 

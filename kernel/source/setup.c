@@ -2,6 +2,7 @@
 
 #include "arch/lcpu.h"
 #include "arch/thread.h"
+#include "gfx/simplefb.h"
 #include "mm/internal.h"
 #include "proc/internal.h"
 #include "proc/smp.h"
@@ -13,7 +14,9 @@ static cpu_t early_cpu = (cpu_t) {
 
 static thread_t early_thread = (thread_t) {
     .context = (thread_context_t) {
-        .self = &early_thread.context
+        #if defined(__x86_64__)
+            .self = &early_thread.context
+        #endif
     },
     .tid = 0,
     .assigned_cpu = &early_cpu
@@ -21,6 +24,9 @@ static thread_t early_thread = (thread_t) {
 
 void __entry()
 {
+    simplefb_init();
+
+    log(LOG_INFO, "A");
     log(LOG_INFO, "Kernel start.");
 
     lcpu_thread_reg_write((size_t)&early_thread.context);
