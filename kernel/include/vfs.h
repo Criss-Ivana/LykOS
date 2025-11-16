@@ -81,11 +81,12 @@ mount_point_t *(*filepath_to_mountpoint)(vnode_t *vnode, struct list_head *vfs);
 
 typedef struct trie_node
 {
-    struct trie_node *sibling;
-    struct trie_node *child;
+    list_t children;
     char node_name[PATH_MAX_NAME_LEN];
     mount_point_t *mount_point; // If it's not a mount point, this is NULL
     int is_end_of_path;
+
+    list_node_t list_node;
 }
 trie_node_t;
 
