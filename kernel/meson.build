@@ -1,12 +1,16 @@
 project(
     'kernel',
-    ['c', 'nasm'],
+    ['c'],
     version: '0.1',
-    meson_version: '>=0.62.0',
+    meson_version: '>=0.64.0',
     default_options: ['c_std=gnu23', 'warning_level=2'],
 )
 
 target_arch = get_option('target_arch')
+
+if target_arch == 'x86_64'
+    add_languages('nasm')
+endif
 
 nasm = find_program('nasm', required: true)
 
@@ -30,7 +34,7 @@ c_flags = [
     '-g',
     # Features
     '-DPRINTF_DISABLE_SUPPORT_FLOAT',
-    '-DLIMINE_API_REVISION=3',
+    '-DLIMINE_API_REVISION=4',
 ]
 
 as_flags = [
@@ -92,18 +96,7 @@ include_directories = include_directories('include')
 
 subdir('source')
 
-asm_objs = []
-foreach f : asm_files
-    asm_objs += custom_target(
-        f + '_obj',
-        input: f,
-        output: f + '.o',
-        command: [nasm, nasm_flags, '-o', '@OUTPUT@', '@INPUT@'],
-        depend_files: f,
-    )
-endforeach
-
-sources = c_files + as_files + asm_objs + [limine_header]
+sources = c_files + as_files + asm_files + [limine_header]
 
 output_static_lib = static_library(
     'kernel',

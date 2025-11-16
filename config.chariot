@@ -8,7 +8,7 @@ source/kernel {
 source/limine {
     url: "https://codeberg.org/Limine/Limine.git"
     type: "git"
-    revision: "aaf327b4157f6aac471149356cf8298519f6df09"
+    revision: "v10.x-binary"
 }
 
 source/support {

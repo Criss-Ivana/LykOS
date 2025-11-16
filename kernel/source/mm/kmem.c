@@ -1,11 +1,11 @@
 #include "mm/kmem.h"
 
 #include "arch/types.h"
-#include "cpu.h"
 #include "hhdm.h"
 #include "mm/pm.h"
-#include "sched.h"
-#include "thread.h"
+#include "proc/smp.h"
+#include "proc/thread.h"
+#include "proc/sched.h"
 #include "utils/list.h"
 
 static kmem_slab_t *cache_make_slab(kmem_cache_t *cache)

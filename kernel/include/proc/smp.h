@@ -3,11 +3,11 @@
 #include "thread.h"
 #include "utils/list.h"
 
-typedef struct cpu cpu_t;
+typedef struct smp_cpu smp_cpu_t;
 typedef struct proc proc_t;
 typedef struct thread thread_t;
 
-typedef struct cpu
+typedef struct smp_cpu
 {
     size_t id;
     thread_t *idle_thread;
@@ -15,4 +15,6 @@ typedef struct cpu
 
     list_node_t cpu_list_node;
 }
-cpu_t;
+smp_cpu_t;
+
+extern list_t smp_cpus;

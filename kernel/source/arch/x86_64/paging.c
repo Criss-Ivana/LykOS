@@ -39,8 +39,6 @@ static uint64_t translate_prot(int prot)
 
 int paging_map_page(paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t size, int prot)
 {
-    // uint64_t _prot = translate_prot(prot);
-
     uint64_t pml4e = (vaddr >> 39) & 0x1FF;
     uint64_t pml3e = (vaddr >> 30) & 0x1FF;
     uint64_t pml2e = (vaddr >> 21) & 0x1FF;
@@ -51,6 +49,8 @@ int paging_map_page(paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t 
     pte_t *pml2;
     pte_t *pml1;
 
+    uint64_t _prot = translate_prot(prot);
+
     // PML4 -> PML3
     if (pml4[pml4e] & PTE_PRESENT)
         pml3 = (pte_t *)(PTE_ADDR_MASK(pml4[pml4e]) + HHDM);
@@ -60,6 +60,13 @@ int paging_map_page(paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t 
         pml3 = (pte_t *)(phys + HHDM);
         memset(pml3, 0, 0x1000);
         pml4[pml4e] = phys | PTE_PRESENT | PTE_WRITE | PTE_USER;
+    }
+
+    // 1 GiB page
+    if (size == 1 * GIB)
+    {
+        pml3[pml3e] = paddr | _prot | PTE_PRESENT | PTE_HUGE;
+        return 0;
     }
 
     // PML3 -> PML2
@@ -73,6 +80,13 @@ int paging_map_page(paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t 
         pml3[pml3e] = phys | PTE_PRESENT | PTE_WRITE | PTE_USER;
     }
 
+    // 2 MiB page
+    if (size == 2 * MIB)
+    {
+        pml2[pml2e] = paddr | _prot | PTE_PRESENT | PTE_HUGE;
+        return 0;
+    }
+
     // PML2 -> PML1
     if (pml2[pml2e] & PTE_PRESENT)
         pml1 = (pte_t *)(PTE_ADDR_MASK(pml2[pml2e]) + HHDM);
@@ -84,8 +98,8 @@ int paging_map_page(paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t 
         pml2[pml2e] = phys | PTE_PRESENT | PTE_WRITE | PTE_USER;
     }
 
-    pml1[pml1e] = paddr | PTE_PRESENT | PTE_WRITE | PTE_USER;
-
+    // 4 KiB page
+    pml1[pml1e] = paddr | _prot | PTE_PRESENT;
     return 0;
 }
 
