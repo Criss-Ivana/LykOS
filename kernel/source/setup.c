@@ -7,6 +7,7 @@
 #include "proc/internal.h"
 #include "proc/smp.h"
 #include "proc/thread.h"
+#include "fs/vfs.h"
 
 static cpu_t early_cpu = (cpu_t) {
     .id = 0,
@@ -34,6 +35,9 @@ void __entry()
     pm_init();
     heap_init();
     vm_init();
+
+    vfs_init();
+
     smp_init();
 
     log(LOG_INFO, "Kernel end.");

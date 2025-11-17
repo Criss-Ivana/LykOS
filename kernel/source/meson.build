@@ -1,4 +1,5 @@
 subdir('arch/' + target_arch)
+subdir('fs')
 subdir('gfx')
 subdir('mm')
 subdir('proc')
