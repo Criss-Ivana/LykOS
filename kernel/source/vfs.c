@@ -1,9 +1,16 @@
+#include "vfs.h"
+
 // VFS LIST MANAGEMENT
 
 list_t vfs_list = LIST_INIT;
 list_t mount_point_list = LIST_INIT;
 list_t trie_list = LIST_INIT;
-trie_node_t *root = NULL;
+trie_node_t *root = heap_alloc(sizeof(trie_node_t));
+root = (trie_node_t) {
+        .children = LIST_INIT;
+        .name = strdup("/");
+        .mount_point = NULL;
+};
 
 void print_vfs_list()
 {
@@ -59,46 +66,35 @@ trie_node_t *create_trie_node(const char *name)
         .children = LIST_INIT;
         .name = strdup(name);
         .mount_point = NULL;
-        .is_end_of_path = 0;
     };
     return node;
 }
 
 trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt) {
-    if (!root) root = create_trie_node("/");
 
     if (strcmp(path, "/") == 0) {
         root->mount_point = mpt;
-        root->is_end_of_path = 1;
         return root;
     }
 
-    char path_copy[PATH_MAX_NAME_LEN];
-    strncpy(path_copy, path, PATH_MAX_NAME_LEN - 1);
-    path_copy[PATH_MAX_NAME_LEN - 1] = '\0';
+    int found;
+    char path_copy[PATH_MAX_NAME_LEN], *next_slash;
+    strcpy(path_copy, path);
 
-    trie_node_t *current = root;
-    trie_node_t *child;
+    trie_node_t *current = root, new_node;
 
     char *segment = path_copy;
     if (*segment == '/') segment++;
 
     while (*segment) {
-        char *next_slash = strchr(segment, '/');
-        int segment_len;
-        if (next_slash) {
-            segment_len = next_slash - segment;
+        next_slash = strchr(segment, '/');
+        if (next_slash)
             *next_slash = '\0';
-        } else {
-            segment_len = strlen(segment);
-        }
 
-
-        int found = 0;
+        found = 0;
         FOREACH(n, current->children) {
             child = LIST_GET_CONTAINER(n, trie_node_t, list_node);
-            if (strncmp(child->name, segment, segment_len) == 0 &&
-                child->name[segment_len] == '\0') {
+            if (strcmp(child->name, segment) == 0 ) {
                 current = child;
                 found = 1;
                 break;
@@ -106,54 +102,41 @@ trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt) {
         }
 
         if (!found) {
-            char tmp[PATH_MAX_NAME_LEN];
-            strncpy(tmp, segment, segment_len);
-            tmp[segment_len] = '\0';
-
-            child = create_trie_node(tmp);
-            list_append(&current->children, &child->list_node);
-            current = child;
+            new_node = create_trie_node(segment);
+            list_append(&current->children, &new_node->list_node);
+            current = new_node;
         }
 
         if (!next_slash) break;
         segment = next_slash + 1;
     }
 
-    current->is_end_of_path = 1;
     current->mount_point = mpt;
     return current;
 }
 
 mount_point_t *filepath_to_mountpoint(const char *path) {
-    if (!root) return NULL;
     if (strcmp(path, "/") == 0) return root->mount_point;
 
-    char path_copy[PATH_MAX_NAME_LEN];
-    strncpy(path_copy, path, PATH_MAX_NAME_LEN - 1);
-    path_copy[PATH_MAX_NAME_LEN - 1] = '\0';
+    int found;
+    char path_copy[PATH_MAX_NAME_LEN], *next_slash;
+    strcpy(path_copy, path);
 
-    trie_node_t *current = root;
-    trie_node_t *child;
-    mount_point_t *match = current->mount_point;
+    trie_node_t *current = root, *child;
+    mount_point_t *match = root->mount_point;
 
     char *segment = path_copy;
     if (*segment == '/') segment++;
 
     while (*segment) {
-        char *next_slash = strchr(segment, '/');
-        int segment_len;
-        if (next_slash) {
-            segment_len = next_slash - segment;
+        next_slash = strchr(segment, '/');
+        if (next_slash)
             *next_slash = '\0';
-        } else {
-            segment_len = strlen(segment);
-        }
 
-        int found = 0;
+        found = 0;
         FOREACH(n, current->children) {
             child = LIST_GET_CONTAINER(n, trie_node_t, list_node);
-            if (strncmp(child->name, segment, segment_len) == 0 &&
-                child->name[segment_len] == '\0') {
+            if (strcmp(child->name, segment) == 0) {
                 current = child;
                 if (child->mount_point) match = child->mount_point;
                 found = 1;

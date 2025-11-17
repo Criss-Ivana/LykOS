@@ -1,6 +1,5 @@
 #pragma once
 
-#include <vfs.h>
 #include "mm/heap.h"
 #include <log.h>
 #include "utils/list.h"
@@ -44,7 +43,6 @@ vfs_t;
 vfs_t *vfs_alloc(const char *name, vfs_ops_t *ops, size_t block_size, int flags);
 
 // For vfs list management
-struct list_head vfs_list;
 void vfs_init_list();
 void add_vfs_list(vfs_t *vfs);
 void remove_vfs_list(vfs_t *vfs);
@@ -84,7 +82,6 @@ typedef struct trie_node
     list_t children;
     char node_name[PATH_MAX_NAME_LEN];
     mount_point_t *mount_point; // If it's not a mount point, this is NULL
-    int is_end_of_path;
 
     list_node_t list_node;
 }
