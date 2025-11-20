@@ -1,57 +1,8 @@
 #include "rs/ramfs.h"
-#include "fs/vfs.h"
 
-#include <common/assert.h>
-#include <common/hhdm.h>
-#include <common/sync/spinlock.h>
-#include <lib/def.h>
-#include <lib/errno.h>
-#include <lib/list.h>
-#include <lib/math.h>
-#include <lib/string.h>
-#include <mm/pmm.h>
-#include <mm/heap.h>
 
-typedef struct
+static int ramfs_open(vnode_t *self, const char *name, vnode_t **out)
 {
-    vnode_t vn;
-
-    list_t children;
-    list_t pages;
-
-    list_node_t list_node;
-}
-ramfs_node_t;
-
-typedef struct
-{
-    void *data;
-
-    list_node_t list_node;
-}
-ramfs_page_t;
-
-static int tmpfs_open  (vnode_t *self, const char *name, vnode_t **out);
-static int tmpfs_close (vnode_t *self);
-static int tmpfs_read  (vnode_t *self, u64 offset, void *buffer, u64 count, u64 *out);
-static int tmpfs_write (vnode_t *self, u64 offset, void *buffer, u64 count, u64 *out);
-static int tmpfs_list  (vnode_t *self, u64 *hint, const char **out);
-static int tmpfs_create(vnode_t *self, char *name, vnode_type_t t, vnode_t **out);
-static int tmpfs_ioctl (vnode_t *self, u64 request, void *args);
-
-static vnode_ops_t tmpfs_ops = {
-    .open   = tmpfs_open,
-    .close  = tmpfs_close,
-    .read   = tmpfs_read,
-    .write  = tmpfs_write,
-    .list   = tmpfs_list,
-    .create = tmpfs_create,
-    .ioctl  = tmpfs_ioctl,
-};
-
-static int tmpfs_open(vnode_t *self, const char *name, vnode_t **out)
-{
-    ASSERT(name && out);
 
     if (self->type != VNODE_DIR)
     {
@@ -59,13 +10,12 @@ static int tmpfs_open(vnode_t *self, const char *name, vnode_t **out)
         return ENOTDIR;
     }
 
-    tmpfs_node_t *parent = (tmpfs_node_t *)self;
+    ramfs_node_t *parent = self;
     FOREACH(n, parent->children)
     {
-        tmpfs_node_t *child = LIST_GET_CONTAINER(n, tmpfs_node_t, list_node);
+        ramfs_node_t *child = LIST_GET_CONTAINER(n, ramfs_node_t, list_node);
         if (strcmp(child->vn.name, name) == 0)
         {
-            VN_HOLD(&child->vn);
             *out = &child->vn;
             return EOK;
         }
@@ -75,35 +25,33 @@ static int tmpfs_open(vnode_t *self, const char *name, vnode_t **out)
     return ENOENT;
 }
 
-static int tmpfs_close(vnode_t *self)
+static int ramfs_close(vnode_t *self)
 {
-    ASSERT(self->ref_count == 0);
 
-    heap_free((tmpfs_node_t *)self);
+    heap_free((ramfs_node_t *)self);
 
     return EOK;
 }
 
-static int tmpfs_read(vnode_t *self, u64 offset, void *buffer, u64 count, u64 *out)
+static int ramfs_read(vnode_t *self, uint64_t offset, void *buffer, uint64_t count, uint64_t *out)
 {
-    ASSERT(buffer && out);
 
-    tmpfs_node_t *node = (tmpfs_node_t *)self;
+    ramfs_node_t *node = (ramfs_node_t *)self;
 
-    u64 page_start = 0;
-    u64 copied = 0;
+    uint64_t page_start = 0;
+    uint64_t copied = 0;
     FOREACH(n, node->pages)
     {
-        tmpfs_page_t *page = LIST_GET_CONTAINER(n, tmpfs_page_t, list_node);
+        ramfs_page_t *page = LIST_GET_CONTAINER(n, ramfs_page_t, list_node);
 
         if (offset >= page_start && page_start < offset + count)
         {
-            u64 page_offset = offset - page_start;
-            u64 bytes_to_copy = MIN(ARCH_PAGE_GRAN - page_offset, count - copied);
+            uint64_t page_offset = offset - page_start;
+            uint64_t bytes_to_copy = MIN(ARCH_PAGE_GRAN - page_offset, count - copied);
 
             memcpy(
-                (u8 *)buffer + copied,
-                (u8 *)page->data + page_offset,
+                (uint8_t *)buffer + copied,
+                (uint8_t *)page->data + page_offset,
                 bytes_to_copy
             );
             copied += bytes_to_copy;
@@ -116,35 +64,34 @@ static int tmpfs_read(vnode_t *self, u64 offset, void *buffer, u64 count, u64 *o
     return EOK;
 }
 
-static int tmpfs_write(vnode_t *self, u64 offset, void *buffer, u64 count, u64 *out)
+static int ramfs_write(vnode_t *self, uint64_t offset, void *buffer, uint64_t count, uint64_t *out)
 {
-    ASSERT(buffer && out);
 
-    tmpfs_node_t *node = (tmpfs_node_t *)self;
+    ramfs_node_t *node = (ramfs_node_t *)self;
 
-    u64 needed_page_count = CEIL(offset + count, ARCH_PAGE_GRAN) / ARCH_PAGE_GRAN;
-    u64 file_page_count = CEIL(node->vn.size, ARCH_PAGE_GRAN) / ARCH_PAGE_GRAN;
+    uint64_t needed_page_count = CEIL(offset + count, ARCH_PAGE_GRAN) / ARCH_PAGE_GRAN;
+    uint64_t file_page_count = CEIL(node->vn.size, ARCH_PAGE_GRAN) / ARCH_PAGE_GRAN;
     if (needed_page_count > file_page_count)
-        for (u64 i = 0; i < needed_page_count - file_page_count; i++)
+        for (uint64_t i = 0; i < needed_page_count - file_page_count; i++)
         {
-            tmpfs_page_t *page = heap_alloc(sizeof(tmpfs_page_t));
-            *page = (tmpfs_page_t) {
+            ramfs_page_t *page = heap_alloc(sizeof(ramfs_page_t));
+            *page = (ramfs_page_t) {
                 .data = (void*)((uptr)pmm_alloc(0) + HHDM),
                 .list_node = LIST_NODE_INIT
             };
             list_append(&node->pages, &page->list_node);
         }
 
-    u64 page_start = 0;
-    u64 copied = 0;
+    uint64_t page_start = 0;
+    uint64_t copied = 0;
     FOREACH(n, node->pages)
     {
-        tmpfs_page_t *page = LIST_GET_CONTAINER(n, tmpfs_page_t, list_node);
+        ramfs_page_t *page = LIST_GET_CONTAINER(n, ramfs_page_t, list_node);
 
         if (offset >= page_start && page_start < offset + count)
         {
-            u64 page_offset = offset - page_start;
-            u64 bytes_to_copy = MIN(ARCH_PAGE_GRAN - page_offset, count - copied);
+            uint64_t page_offset = offset - page_start;
+            uint64_t bytes_to_copy = MIN(ARCH_PAGE_GRAN - page_offset, count - copied);
 
             memcpy(
                 (u8 *)page->data + page_offset,
@@ -166,108 +113,108 @@ static int tmpfs_write(vnode_t *self, u64 offset, void *buffer, u64 count, u64 *
     return EOK;
 }
 
-static int tmpfs_list(vnode_t *self, u64 *hint, const char **out)
-{
-    ASSERT(hint && out);
+// static int ramfs_list(vnode_t *self, uint64_t *hint, const char **out)
+// {
+//     ASSERT(hint && out);
 
-    if (self->type != VNODE_DIR)
-    {
-        *out = NULL;
-        return ENOTDIR;
-    }
+//     if (self->type != VNODE_DIR)
+//     {
+//         *out = NULL;
+//         return ENOTDIR;
+//     }
 
-    tmpfs_node_t *parent = (tmpfs_node_t *)self;
+//     ramfs_node_t *parent = (ramfs_node_t *)self;
 
-    if (*hint == 0xFFFF)
-    {
-        *out = NULL;
-        return EOK;
-    }
+//     if (*hint == 0xFFFF)
+//     {
+//         *out = NULL;
+//         return EOK;
+//     }
 
-    list_node_t *next;
-    if (*hint == 0)
-        next = parent->children.head;
-    else
-        next = ((list_node_t *)*hint)->next;
+//     list_node_t *next;
+//     if (*hint == 0)
+//         next = parent->children.head;
+//     else
+//         next = ((list_node_t *)*hint)->next;
 
-    if (next)
-    {
-        *hint = (u64)next;
+//     if (next)
+//     {
+//         *hint = (uint64_t)next;
 
-        tmpfs_node_t *child = LIST_GET_CONTAINER(next, tmpfs_node_t, list_node);
-        *out = (const char *)&child->vn.name;
-        return EOK;
-    }
-    else
-    {
-        *hint = 0xFFFF;
-        *out = NULL;
-        return EOK;
-    }
-}
+//         ramfs_node_t *child = LIST_GET_CONTAINER(next, ramfs_node_t, list_node);
+//         *out = (const char *)&child->vn.name;
+//         return EOK;
+//     }
+//     else
+//     {
+//         *hint = 0xFFFF;
+//         *out = NULL;
+//         return EOK;
+//     }
+// }
 
-static int tmpfs_create(vnode_t *self, char *name, vnode_type_t t, vnode_t **out)
-{
-    ASSERT(name && out);
+// static int ramfs_create(vnode_t *self, char *name, vnode_type_t t, vnode_t **out)
+// {
+//     ASSERT(name && out);
 
-    tmpfs_node_t *parent = (tmpfs_node_t *)self;
-    tmpfs_node_t *child  = heap_alloc(sizeof(tmpfs_node_t));
+//     ramfs_node_t *parent = (ramfs_node_t *)self;
+//     ramfs_node_t *child  = heap_alloc(sizeof(ramfs_node_t));
 
-    *child = (tmpfs_node_t) {
-        .vn = (vnode_t) {
-            .type = t,
-            .size = 0,
-            .ops  = &tmpfs_ops,
-            .slock = SPINLOCK_INIT,
-            .ref_count = 1
-        },
-        .children = LIST_INIT,
-        .pages = LIST_INIT,
-        .list_node = LIST_NODE_INIT
-    };
-    strcpy(child->vn.name, name);
+//     *child = (ramfs_node_t) {
+//         .vn = (vnode_t) {
+//             .type = t,
+//             .size = 0,
+//             .ops  = &ramfs_ops,
+//             .slock = SPINLOCK_INIT,
+//             .ref_count = 1
+//         },
+//         .children = LIST_INIT,
+//         .pages = LIST_INIT,
+//         .list_node = LIST_NODE_INIT
+//     };
+//     strcpy(child->vn.name, name);
 
-    list_append(&parent->children, &child->list_node);
+//     list_append(&parent->children, &child->list_node);
 
-    *out = &child->vn;
-    return EOK;
-}
+//     *out = &child->vn;
+//     return EOK;
+// }
 
-static int tmpfs_ioctl(vnode_t *self, u64 request, void *args)
-{
-    return ENOTSUP;
-}
+// static int ramfs_ioctl(vnode_t *self, uint64_t request, void *args)
+// {
+//     return ENOTSUP;
+// }
 
-bool tmpfs_probe(block_device_t *blk_dev)
-{
-    if (blk_dev)
-        return false;
-    else
-        return true;
-}
+// bool ramfs_probe(block_device_t *blk_dev)
+// {
+//     if (blk_dev)
+//         return false;
+//     else
+//         return true;
+// }
 
-bool tmpfs_get_root_vnode(block_device_t *blk_dev, vnode_t **out)
-{
-    vnode_t *root = heap_alloc(sizeof(vnode_t));
-    *root = (vnode_t) {
-        .type = VNODE_DIR,
-        .size = 0,
-        .ops  = &tmpfs_ops,
-        .slock = SPINLOCK_INIT,
-        .ref_count = 1
-    };
+// bool ramfs_get_root_vnode(block_device_t *blk_dev, vnode_t **out)
+// {
+//     vnode_t *root = heap_alloc(sizeof(vnode_t));
+//     *root = (vnode_t) {
+//         .type = VNODE_DIR,
+//         .size = 0,
+//         .ops  = &ramfs_ops,
+//         .slock = SPINLOCK_INIT,
+//         .ref_count = 1
+//     };
 
-    *out = root;
-    return true;
-}
+//     *out = root;
+//     return true;
+// }
 
-static filesystem_type_t tmpfs_fs = {
-    .name = "initrd",
-    .probe = tmpfs_probe,
-    .get_root_vnode = tmpfs_get_root_vnode
-};
+// static filesystem_type_t ramfs_fs = {
+//     .name = "initrd",
+//     .probe = ramfs_probe,
+//     .get_root_vnode = ramfs_get_root_vnode
+// };
 
-void tmpfs_init()
-{
-    vfs_register_fs_type(&tmpfs_fs);
-}
+// void ramfs_init()
+// {
+//     vfs_register_fs_type(&ramfs_fs);
+// }
