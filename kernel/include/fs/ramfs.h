@@ -17,6 +17,9 @@
 #include "utils/math.h"
 #include "utils/string.h"
 
+#define INITIAL_PAGE_CAPACITY 1
+
+
 typedef struct ramfs_node ramfs_node_t;
 typedef struct ramfs_page ramfs_page_t;
 
@@ -25,7 +28,10 @@ struct ramfs_node
     vnode_t vn;
 
     list_t children;
-    list_t pages;
+    void **pages;
+    size_t page_count; //pages used up
+    size_t page_capacity; //total number
+
 
     list_node_t list_node;
 };

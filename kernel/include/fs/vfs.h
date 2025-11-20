@@ -89,6 +89,7 @@ struct vnode
     uint64_t ctime;
     uint64_t mtime;
     uint64_t atime;
+    uint64_t size;
 
     vnode_ops_t *ops;
     vfs_t *parent_vfs;

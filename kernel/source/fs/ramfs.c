@@ -76,7 +76,7 @@ static int ramfs_write(vnode_t *self, uint64_t offset, void *buffer, uint64_t co
         {
             ramfs_page_t *page = heap_alloc(sizeof(ramfs_page_t));
             *page = (ramfs_page_t) {
-                .data = (void*)((uptr)pmm_alloc(0) + HHDM),
+                .data = (void*)((uintptr_t)pmm_alloc(0) + HHDM), //ce e asta??
                 .list_node = LIST_NODE_INIT
             };
             list_append(&node->pages, &page->list_node);
@@ -94,8 +94,8 @@ static int ramfs_write(vnode_t *self, uint64_t offset, void *buffer, uint64_t co
             uint64_t bytes_to_copy = MIN(ARCH_PAGE_GRAN - page_offset, count - copied);
 
             memcpy(
-                (u8 *)page->data + page_offset,
-                (u8 *)buffer + copied,
+                (uint8_t *)page->data + page_offset,
+                (uint8_t *)buffer + copied,
                 bytes_to_copy
             );
 
@@ -106,115 +106,93 @@ static int ramfs_write(vnode_t *self, uint64_t offset, void *buffer, uint64_t co
     }
 
     // Update vnode size if needed.
-    if (offset + copied > node->vn.size)
+    if (offset + copied > node->vn.size) //vn size??
         node->vn.size = offset + copied;
 
     *out = copied;
     return EOK;
 }
 
-// static int ramfs_list(vnode_t *self, uint64_t *hint, const char **out)
-// {
-//     ASSERT(hint && out);
+static int ramfs_list(vnode_t *self, uint64_t *hint, const char **out) // ce e hint?
+{
 
-//     if (self->type != VNODE_DIR)
-//     {
-//         *out = NULL;
-//         return ENOTDIR;
-//     }
+    if (self->type != VNODE_DIR)
+    {
+        *out = NULL;
+        return ENOTDIR;
+    }
 
-//     ramfs_node_t *parent = (ramfs_node_t *)self;
+    ramfs_node_t *parent = (ramfs_node_t *)self;
 
-//     if (*hint == 0xFFFF)
-//     {
-//         *out = NULL;
-//         return EOK;
-//     }
+    if (*hint == 0xFFFF)
+    {
+        *out = NULL;
+        return EOK;
+    }
 
-//     list_node_t *next;
-//     if (*hint == 0)
-//         next = parent->children.head;
-//     else
-//         next = ((list_node_t *)*hint)->next;
+    list_node_t *next;
+    if (*hint == 0)
+        next = parent->children.head;
+    else
+        next = ((list_node_t *)*hint)->next;
 
-//     if (next)
-//     {
-//         *hint = (uint64_t)next;
+    if (next)
+    {
+        *hint = (uint64_t)next;
 
-//         ramfs_node_t *child = LIST_GET_CONTAINER(next, ramfs_node_t, list_node);
-//         *out = (const char *)&child->vn.name;
-//         return EOK;
-//     }
-//     else
-//     {
-//         *hint = 0xFFFF;
-//         *out = NULL;
-//         return EOK;
-//     }
-// }
+        ramfs_node_t *child = LIST_GET_CONTAINER(next, ramfs_node_t, list_node);
+        *out = (const char *)&child->vn.name;
+        return EOK;
+    }
+    else
+    {
+        *hint = 0xFFFF;
+        *out = NULL;
+        return EOK;
+    }
+}
 
-// static int ramfs_create(vnode_t *self, char *name, vnode_type_t t, vnode_t **out)
-// {
-//     ASSERT(name && out);
+static int ramfs_create(vnode_t *self, char *name, vnode_type_t t, vnode_t **out)
+{
 
-//     ramfs_node_t *parent = (ramfs_node_t *)self;
-//     ramfs_node_t *child  = heap_alloc(sizeof(ramfs_node_t));
+    ramfs_node_t *parent = (ramfs_node_t *)self;
+    ramfs_node_t *child  = heap_alloc(sizeof(ramfs_node_t));
 
-//     *child = (ramfs_node_t) {
-//         .vn = (vnode_t) {
-//             .type = t,
-//             .size = 0,
-//             .ops  = &ramfs_ops,
-//             .slock = SPINLOCK_INIT,
-//             .ref_count = 1
-//         },
-//         .children = LIST_INIT,
-//         .pages = LIST_INIT,
-//         .list_node = LIST_NODE_INIT
-//     };
-//     strcpy(child->vn.name, name);
+    *child = (ramfs_node_t) {
+        .vn = (vnode_t) {
+            .type = t,
+            .ctime = 0, // To modify
+            .mtime = 0, // To modify
+            .atime = 0, // To modify
+            .size = 0,
+            .ops  = &ramfs_ops, //inode?
+            .ref_count = 1
+        },
+        .children = LIST_INIT,
+        .list_node = LIST_NODE_INIT
+    };
+    strcpy(child->vn.name, name);
 
-//     list_append(&parent->children, &child->list_node);
+    child->pages = heap_alloc(sizeof(void*) * INITIAL_PAGE_CAPACITY);
+    child->page_capacity = INITIAL_PAGE_CAPACITY;
+    node->page_count = INITIAL_PAGE_CAPACITY;
 
-//     *out = &child->vn;
-//     return EOK;
-// }
+    uintptr_t addr = pm_alloc(0);
+    child->pages[0] = (void*)(phys_addr + HHDM);
 
-// static int ramfs_ioctl(vnode_t *self, uint64_t request, void *args)
-// {
-//     return ENOTSUP;
-// }
+    list_append(&parent->children, &child->list_node);
 
-// bool ramfs_probe(block_device_t *blk_dev)
-// {
-//     if (blk_dev)
-//         return false;
-//     else
-//         return true;
-// }
+    *out = &child->vn;
+    return EOK;
+}
 
-// bool ramfs_get_root_vnode(block_device_t *blk_dev, vnode_t **out)
-// {
-//     vnode_t *root = heap_alloc(sizeof(vnode_t));
-//     *root = (vnode_t) {
-//         .type = VNODE_DIR,
-//         .size = 0,
-//         .ops  = &ramfs_ops,
-//         .slock = SPINLOCK_INIT,
-//         .ref_count = 1
-//     };
+static int ramfs_ioctl(vnode_t *self, uint64_t request, void *args)
+{
+    return ENOTSUP;
+}
 
-//     *out = root;
-//     return true;
-// }
 
-// static filesystem_type_t ramfs_fs = {
-//     .name = "initrd",
-//     .probe = ramfs_probe,
-//     .get_root_vnode = ramfs_get_root_vnode
-// };
-
-// void ramfs_init()
-// {
-//     vfs_register_fs_type(&ramfs_fs);
-// }
+void ramfs_init()
+{
+    vfs_register_fs_type(&ramfs_fs); // aloce vfs + mount root
+}

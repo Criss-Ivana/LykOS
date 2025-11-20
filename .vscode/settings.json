@@ -27,6 +27,9 @@
         "type_traits": "c",
         "utility": "c",
         "cstdint": "c",
-        "format": "c"
+        "format": "c",
+        "chrono": "c",
+        "heap.h": "c",
+        "stacktrace": "c"
     }
 }
