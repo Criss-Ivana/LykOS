@@ -99,16 +99,16 @@ struct vnode
 
 struct vnode_ops
 {
-    int (*open)(vnode_t *vn, int flags);
+    int (*open)(vnode_t *vn, int flags, vnode_t **out);
     int (*close)(vnode_t *vn);
     int (*read)(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *bytes_read);
-    int (*write)(vnode_t *vn, const void *buf, uint64_t len, uint64_t offset, uint64_t *bytes_written);
-    int (*lookup)(vnode_t *dir_vn, const char *name, vnode_t **out_vn);
-    int (*create)(vnode_t *dir_vn, const char *name, vnode_type_t type, vnode_t **out_vn);
-    int (*remove)(vnode_t *dir_vn, const char *name);
-    int (*mkdir)(vnode_t *dir_vn, const char *name, vnode_t **out_vn);
-    int (*rmdir)(vnode_t *dir_vn, const char *name);
-    int (*readdir)(vnode_t *dir_vn, void *buf, uint64_t len, uint64_t *offset, uint64_t *bytes_read);
+    int (*write)(vnode_t *vn, const void *buffer, uint64_t len, uint64_t offset, uint64_t *bytes_written);
+    int (*lookup)(vnode_t *vn, const char *name, vnode_t **out_vn);
+    int (*create)(vnode_t *vn, const char *name, vnode_type_t type, vnode_t **out_vn);
+    int (*remove)(vnode_t *vn, const char *name);
+    int (*mkdir)(vnode_t *vn, const char *name, vnode_t **out_vn);
+    int (*rmdir)(vnode_t *vn, const char *name);
+    int (*readdir)(vnode_t *vn, void *buf, uint64_t len, uint64_t *offset, uint64_t *bytes_read);
 };
 
 /*
@@ -123,9 +123,9 @@ void print_mount_point_list();
 
 
 mount_point_t *vfs_mount(vfs_t *vfs, const char *path);
-int vfs_open(const char *path, int flags, vnode_t **out); //intoarce un vnode_t**
+int vfs_open(const char *path, int flags, vnode_t **out);
 int vfs_close(vnode_t *vn);
 int vfs_read(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_read);
-int vfs_write(vnode_t *vn, const void *buf, uint64_t len, uint64_t offset, uint64_t *out_bytes_written);
-int vfs_create(vnode_t *dir_vn, const char *name, vnode_type_t type, vnode_t **out_vn);
-int vfs_remove(vnode_t *dir_vn, const char *name);
+int vfs_write(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_written);
+int vfs_create(vnode_t *vn, const char *name, vnode_type_t type, vnode_t **out_vn);
+int vfs_remove(vnode_t *vn, const char *name);

@@ -20,6 +20,11 @@
     "version": 4,
     "C_Cpp.errorSquiggles": "disabled",
     "files.associations": {
-        "list.h": "c"
+        "list.h": "c",
+        "compare": "c",
+        "functional": "c",
+        "tuple": "c",
+        "type_traits": "c",
+        "utility": "c"
     }
 }
