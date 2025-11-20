@@ -182,7 +182,6 @@ int vfs_open(const char *path, int flags, vnode_t **out){
 
     mount_point_t *mnt = filepath_to_mountpoint(path);
     vnode_t *current = mnt->mount_vn;
-    path = mnt->path;
     while (current && *path)
     {
         while(*path == '/')
@@ -193,6 +192,8 @@ int vfs_open(const char *path, int flags, vnode_t **out){
             *slash = '\0';
 
         current->ops->open(current, flags, &current);
+        if(!current)
+            return -1;
         if (slash)
             *slash = '/';
 

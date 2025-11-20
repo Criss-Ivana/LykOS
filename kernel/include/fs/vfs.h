@@ -16,6 +16,8 @@ typedef struct vfs vfs_t;
 typedef struct vfs_ops vfs_ops_t;
 typedef struct vnode vnode_t;
 typedef struct vnode_ops vnode_ops_t;
+typedef struct mount_point mount_point_t;
+typedef struct trie_node trie_node_t;
 
 
 // VFS STRUCTURE AND OPERATIONS
@@ -57,26 +59,24 @@ struct vfs_ops
 
 // MOUNT POINT STRUCTURE
 
-typedef struct mount_point
+struct mount_point
 {
     char path[PATH_MAX_NAME_LEN];
     vfs_t *vfs;
     vnode_t *mount_vn;
 
     list_node_t list_node;
-}
-mount_point_t;
+};
 
 
-typedef struct trie_node
+struct trie_node
 {
     list_t children;
     char name[PATH_MAX_NAME_LEN];
     mount_point_t *mount_point; // If it's not a mount point, this is NULL
 
     list_node_t list_node;
-}
-trie_node_t;
+};
 
 
 // VNODE STRUCTURE AND OPERATIONS
