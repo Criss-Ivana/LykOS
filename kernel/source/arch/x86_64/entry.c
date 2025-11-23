@@ -4,6 +4,7 @@
 #include "log.h"
 #include "proc/smp.h"
 #include "proc/thread.h"
+#include "fs/vfs.h"
 
 [[noreturn]] extern void kernel_main();
 
