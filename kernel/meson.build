@@ -88,7 +88,7 @@ limine_header = custom_target(
         'curl',
         '-L',
         '-o', 'limine.h',
-        'https://codeberg.org/Limine/Limine/raw/branch/v10.x-binary/limine.h',
+        'https://codeberg.org/Limine/limine-protocol/raw/branch/trunk/include/limine.h',
     ],
 )
 
