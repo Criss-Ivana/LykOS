@@ -15,5 +15,5 @@ This is the main repository of LykOS, an open source hobbyist operating system t
 - Network stack
 - Porting software
 
-### Building, Running, and Contributing
+## Building, Running, and Contributing
 For detailed setup instructions, development guides, and contribution information, visit the project’s [wiki](https://github.com/lykdev/LykOS/wiki).
