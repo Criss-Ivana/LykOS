@@ -3,9 +3,13 @@ asm_files += files(
 )
 
 c_files += files(
+    'entry.c',
+    'int.c',
     'lcpu.c',
     'msr.c',
     'paging.c',
     'serial.c',
     'thread.c',
 )
+
+subdir('tables')
