@@ -1,7 +1,7 @@
 #include "rs/ramfs.h"
 
 
-static int ramfs_open(vnode_t *self, const char *name, vnode_t **out)
+int ramfs_open(vnode_t *self, int flags, vnode_t **out)
 {
 
     if (self->type != VNODE_DIR)
@@ -25,79 +25,81 @@ static int ramfs_open(vnode_t *self, const char *name, vnode_t **out)
     return ENOENT;
 }
 
-static int ramfs_close(vnode_t *self)
+int ramfs_close(vnode_t *self)
 {
 
-    heap_free((ramfs_node_t *)self);
+    //heap_free((ramfs_node_t *)self); //De ce dam free? Close != Destroy
 
     return EOK;
 }
 
-static int ramfs_read(vnode_t *self, uint64_t offset, void *buffer, uint64_t count, uint64_t *out)
+int ramfs_read(vnode_t *self, void *buffer, uint64_t count, uint64_t offset, uint64_t *out)
 {
+    if (!self || !buffer || !out)
+        return -1;
 
     ramfs_node_t *node = (ramfs_node_t *)self;
 
     uint64_t page_start = 0;
     uint64_t copied = 0;
-    FOREACH(n, node->pages)
-    {
-        ramfs_page_t *page = LIST_GET_CONTAINER(n, ramfs_page_t, list_node);
 
-        if (offset >= page_start && page_start < offset + count)
-        {
+    for (size_t i = 0; i < node->page_count; i++) {
+        ramfs_page_t *page = node->pages[i];
+
+        if (offset >= page_start && page_start < offset + count) {
             uint64_t page_offset = offset - page_start;
             uint64_t bytes_to_copy = MIN(ARCH_PAGE_GRAN - page_offset, count - copied);
-
-            memcpy(
-                (uint8_t *)buffer + copied,
-                (uint8_t *)page->data + page_offset,
-                bytes_to_copy
-            );
+            memcpy((uint8_t *)buffer + copied, (uint8_t *)page->data + page_offset, bytes_to_copy);
             copied += bytes_to_copy;
         }
 
         page_start += ARCH_PAGE_GRAN;
+
+        if (copied >= count)
+            break;
     }
 
     *out = copied;
     return EOK;
 }
 
-static int ramfs_write(vnode_t *self, uint64_t offset, void *buffer, uint64_t count, uint64_t *out)
+int ramfs_write(vnode_t *self, const void *buffer, uint64_t count, uint64_t offset, uint64_t *out)
 {
 
     ramfs_node_t *node = (ramfs_node_t *)self;
 
     uint64_t needed_page_count = CEIL(offset + count, ARCH_PAGE_GRAN) / ARCH_PAGE_GRAN;
     uint64_t file_page_count = CEIL(node->vn.size, ARCH_PAGE_GRAN) / ARCH_PAGE_GRAN;
-    if (needed_page_count > file_page_count)
-        for (uint64_t i = 0; i < needed_page_count - file_page_count; i++)
-        {
-            ramfs_page_t *page = heap_alloc(sizeof(ramfs_page_t));
-            *page = (ramfs_page_t) {
-                .data = (void*)((uintptr_t)pmm_alloc(0) + HHDM), //ce e asta??
-                .list_node = LIST_NODE_INIT
-            };
-            list_append(&node->pages, &page->list_node);
-        }
+
+    if (needed_page_count > node->page_capacity) 
+    {
+        size_t new_capacity = MAX(needed_page_count, node->page_capacity * 2);
+        node->pages = heap_realloc(node->pages, sizeof(ramfs_page_t*) * new_capacity);
+        node->page_capacity = new_capacity;
+    }
+
+    while (node->page_count < needed_page_count) 
+    {
+        ramfs_page_t *page = heap_alloc(sizeof(ramfs_page_t));
+        *page = (ramfs_page_t){
+            .data = (void*)((uintptr_t)pmm_alloc(0) + HHDM)
+        };
+        node->pages[node->page_count++] = page;
+    }
+    if (offset + copied > node->vn.size)
+            node->vn.size = offset + copied;
 
     uint64_t page_start = 0;
     uint64_t copied = 0;
-    FOREACH(n, node->pages)
-    {
-        ramfs_page_t *page = LIST_GET_CONTAINER(n, ramfs_page_t, list_node);
 
-        if (offset >= page_start && page_start < offset + count)
-        {
+    for (size_t i = 0; i < node->page_count; i++) {
+        ramfs_page_t *page = node->pages[i];
+
+        if (offset >= page_start && page_start < offset + count) {
             uint64_t page_offset = offset - page_start;
             uint64_t bytes_to_copy = MIN(ARCH_PAGE_GRAN - page_offset, count - copied);
 
-            memcpy(
-                (uint8_t *)page->data + page_offset,
-                (uint8_t *)buffer + copied,
-                bytes_to_copy
-            );
+            memcpy((uint8_t*)page->data + page_offset, (uint8_t*)buffer + copied, bytes_to_copy);
 
             copied += bytes_to_copy;
         }
@@ -105,54 +107,14 @@ static int ramfs_write(vnode_t *self, uint64_t offset, void *buffer, uint64_t co
         page_start += ARCH_PAGE_GRAN;
     }
 
-    // Update vnode size if needed.
-    if (offset + copied > node->vn.size) //vn size??
+    if (offset + copied > node->vn.size)
         node->vn.size = offset + copied;
 
     *out = copied;
     return EOK;
 }
 
-static int ramfs_list(vnode_t *self, uint64_t *hint, const char **out) // ce e hint?
-{
-
-    if (self->type != VNODE_DIR)
-    {
-        *out = NULL;
-        return ENOTDIR;
-    }
-
-    ramfs_node_t *parent = (ramfs_node_t *)self;
-
-    if (*hint == 0xFFFF)
-    {
-        *out = NULL;
-        return EOK;
-    }
-
-    list_node_t *next;
-    if (*hint == 0)
-        next = parent->children.head;
-    else
-        next = ((list_node_t *)*hint)->next;
-
-    if (next)
-    {
-        *hint = (uint64_t)next;
-
-        ramfs_node_t *child = LIST_GET_CONTAINER(next, ramfs_node_t, list_node);
-        *out = (const char *)&child->vn.name;
-        return EOK;
-    }
-    else
-    {
-        *hint = 0xFFFF;
-        *out = NULL;
-        return EOK;
-    }
-}
-
-static int ramfs_create(vnode_t *self, char *name, vnode_type_t t, vnode_t **out)
+int ramfs_create(vnode_t *self, const char *name, vnode_type_t t, vnode_t **out)
 {
 
     ramfs_node_t *parent = (ramfs_node_t *)self;
@@ -171,14 +133,11 @@ static int ramfs_create(vnode_t *self, char *name, vnode_type_t t, vnode_t **out
         .children = LIST_INIT,
         .list_node = LIST_NODE_INIT
     };
-    strcpy(child->vn.name, name);
+    child->vn.name=strdup(name);
 
-    child->pages = heap_alloc(sizeof(void*) * INITIAL_PAGE_CAPACITY);
+    child->pages = heap_alloc(sizeof(ramfs_page_t*) * INITIAL_PAGE_CAPACITY);
+    child->page_count = 0;
     child->page_capacity = INITIAL_PAGE_CAPACITY;
-    node->page_count = INITIAL_PAGE_CAPACITY;
-
-    uintptr_t addr = pm_alloc(0);
-    child->pages[0] = (void*)(phys_addr + HHDM);
 
     list_append(&parent->children, &child->list_node);
 
@@ -186,7 +145,7 @@ static int ramfs_create(vnode_t *self, char *name, vnode_type_t t, vnode_t **out
     return EOK;
 }
 
-static int ramfs_ioctl(vnode_t *self, uint64_t request, void *args)
+int ramfs_ioctl(vnode_t *self, uint64_t request, void *args)
 {
     return ENOTSUP;
 }
@@ -194,5 +153,26 @@ static int ramfs_ioctl(vnode_t *self, uint64_t request, void *args)
 
 void ramfs_init()
 {
-    vfs_register_fs_type(&ramfs_fs); // aloce vfs + mount root
+    vfs_init();
+
+    vfs_t *ramfs_vfs = vfs_alloc("ramfs", &ramfs_ops, ARCH_PAGE_GRAN, 0);
+
+    ramfs_node_t *root_node = heap_alloc(sizeof(ramfs_node_t));
+    *root_node = (ramfs_node_t){
+        .vn = {
+            .type = VNODE_DIR,
+            .ops  = &ramfs_ops,
+            .size = 0,
+            .ref_count = 1,
+            .name = strdup("/"),
+        },
+        .children = LIST_INIT,
+        .list_node = LIST_NODE_INIT,
+        .pages = NULL,
+        .page_count = 0,
+        .page_capacity = 0
+    };
+
+    mount_point_t *mp = vfs_mount(ramfs_vfs, "/");
+    mp->mount_vn = &root_node->vn;
 }

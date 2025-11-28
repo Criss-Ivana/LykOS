@@ -11,6 +11,7 @@
 #include <log.h>
 #include <stdint.h>
 #include "mm/heap.h"
+#include "mm/mm.h"
 #include "uapi/errno.h"
 #include "arch/types.h"
 #include "utils/list.h"
@@ -28,7 +29,7 @@ struct ramfs_node
     vnode_t vn;
 
     list_t children;
-    void **pages;
+    ramfs_page_t **pages;
     size_t page_count; //pages used up
     size_t page_capacity; //total number
 
@@ -43,7 +44,13 @@ struct ramfs_page
     list_node_t list_node;
 };
 
-static vnode_ops_t ramfs_ops = {
+int ramfs_open  (vnode_t *self, int flags, vnode_t **out);
+int ramfs_close (vnode_t *self);
+int ramfs_read  (vnode_t *self, void *buffer, uint64_t count, uint64_t offset, uint64_t *out);
+int ramfs_write (vnode_t *self, const void *buffer, uint64_t count, uint64_t offset, uint64_t *out);
+int ramfs_create(vnode_t *self, const char *name, vnode_type_t t, vnode_t **out);
+
+vnode_ops_t ramfs_ops = {
     .open   = ramfs_open,
     .close  = ramfs_close,
     .read   = ramfs_read,
@@ -52,9 +59,3 @@ static vnode_ops_t ramfs_ops = {
 };
 
 void ramfs_init();
-
-static int ramfs_open  (vnode_t *self, const char *name, vnode_t **out);
-static int ramfs_close (vnode_t *self);
-static int ramfs_read  (vnode_t *self, uint64_t offset, void *buffer, uint64_t count, uint64_t *out);
-static int ramfs_write (vnode_t *self, uint64_t offset, void *buffer, uint64_t count, uint64_t *out);
-static int ramfs_create(vnode_t *self, char *name, vnode_type_t t, vnode_t **out);

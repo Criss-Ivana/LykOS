@@ -53,7 +53,7 @@ void print_mount_point_list()
 
 // FILE PATH TO VFS PARENT
 
-static trie_node_t *create_trie_node(const char *name)
+trie_node_t *create_trie_node(const char *name)
 {
     trie_node_t *node = heap_alloc(sizeof(trie_node_t));
 
@@ -65,7 +65,7 @@ static trie_node_t *create_trie_node(const char *name)
     return node;
 }
 
-static trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt)
+trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt)
 {
 
     if (strcmp(path, "/") == 0)
@@ -118,7 +118,7 @@ static trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt)
     return current;
 }
 
-static mount_point_t *filepath_to_mountpoint(const char *path)
+mount_point_t *filepath_to_mountpoint(const char *path)
 {
     if (strcmp(path, "/") == 0)
         return root->mount_point;
@@ -131,7 +131,7 @@ static mount_point_t *filepath_to_mountpoint(const char *path)
     mount_point_t *match = root->mount_point;
 
     char *segment = path_copy;
-    if (*segment == '/')
+    while (*segment == '/')
         segment++;
 
     while (*segment)
@@ -178,11 +178,12 @@ mount_point_t *vfs_mount(vfs_t *vfs, const char *path)
     return mp;
 }
 
-int vfs_open(const char *path, int flags, vnode_t **out){
+int vfs_open(const char *path, int flags, vnode_t **out)
+{
+    mount_point_t *mp = filepath_to_mountpoint(path);
+    vnode_t *curr = mp->mount_vn;
 
-    mount_point_t *mnt = filepath_to_mountpoint(path);
-    vnode_t *current = mnt->mount_vn;
-    while (current && *path)
+    while (curr && *path)
     {
         while(*path == '/')
             path++;
@@ -190,17 +191,15 @@ int vfs_open(const char *path, int flags, vnode_t **out){
         char *slash = strchr(path, '/');
         if (slash)
             *slash = '\0';
-
-        current->ops->open(current, flags, &current);
-        if(!current)
-            return -1;
+        curr->ops->open(curr, flags, &curr);
         if (slash)
             *slash = '/';
 
-        path += strlen(current->name);
+        path += strlen(curr->name);
     }
-    *out=current;
-    return 0;
+
+    *out = curr;
+    return EOK;
 }
 
 int vfs_close(vnode_t *vn)

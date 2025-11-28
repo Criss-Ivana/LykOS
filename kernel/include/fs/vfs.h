@@ -2,8 +2,10 @@
 
 #include <log.h>
 #include "mm/heap.h"
+#include "mm/mm.h"
 #include <stdint.h>
 #include "arch/types.h"
+#include "uapi/errno.h"
 #include "utils/list.h"
 #include "utils/math.h"
 #include "utils/string.h"
@@ -121,7 +123,9 @@ void vfs_init();
 vfs_t *vfs_alloc(const char *name, vfs_ops_t *ops, size_t block_size, int flags);
 void print_vfs_list(void);
 void print_mount_point_list();
-
+trie_node_t *create_trie_node(const char *name);
+trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt);
+mount_point_t *filepath_to_mountpoint(const char *path);
 
 mount_point_t *vfs_mount(vfs_t *vfs, const char *path);
 int vfs_open(const char *path, int flags, vnode_t **out);
