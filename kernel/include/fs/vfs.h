@@ -39,7 +39,7 @@ vnode_type_t;
 
 struct vfs
 {
-    vfs_ops_t *vfs_op;
+    vfs_ops_t *vfs_ops;
     vnode_t *covered_vn;
     char name[VFS_MAX_NAME_LEN];
     int flags;
@@ -52,11 +52,11 @@ struct vfs
 
 struct vfs_ops
 {
-    int (*vfs_mount)(vfs_t *vfs, const char *path);
-    int (*vfs_unmount)(vfs_t *vfs);
-    int (*vfs_root)(vfs_t *vfs, vnode_t **root_vnode);
+    mount_point_t *(*vfs_mount)(vfs_t *vfs, const char *path);
+    // int (*vfs_unmount)(vfs_t *vfs);
+    // int (*vfs_root)(vfs_t *vfs, vnode_t **root_vnode);
     //int (*vfs_statfs)(vfs_t *vfs, statfs *statbuf);
-    int (*vfs_sync)(vfs_t *vfs);
+    // int (*vfs_sync)(vfs_t *vfs);
 };
 
 // MOUNT POINT STRUCTURE
@@ -85,7 +85,7 @@ struct trie_node
 
 struct vnode
 {
-    char name[VNODE_MAX_NAME_LEN];
+    char *name;
     vnode_type_t type;
     uint32_t perm;
     uint64_t ctime;
@@ -102,7 +102,7 @@ struct vnode
 
 struct vnode_ops
 {
-    int (*open)(vnode_t *vn, int flags, vnode_t **out);
+    int (*open)(vnode_t *vn, const char *name, vnode_t **out);
     int (*close)(vnode_t *vn);
     int (*read)(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *bytes_read);
     int (*write)(vnode_t *vn, const void *buffer, uint64_t len, uint64_t offset, uint64_t *bytes_written);
@@ -120,17 +120,18 @@ struct vnode_ops
 
 void vfs_init(); 
 
-vfs_t *vfs_alloc(const char *name, vfs_ops_t *ops, size_t block_size, int flags);
+vfs_t *vfs_alloc(const char *name, size_t block_size, int flags);
 void print_vfs_list(void);
 void print_mount_point_list();
 trie_node_t *create_trie_node(const char *name);
 trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt);
 mount_point_t *filepath_to_mountpoint(const char *path);
-
 mount_point_t *vfs_mount(vfs_t *vfs, const char *path);
+
 int vfs_open(const char *path, int flags, vnode_t **out);
 int vfs_close(vnode_t *vn);
-int vfs_read(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_read);
-int vfs_write(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_written);
 int vfs_create(vnode_t *vn, const char *name, vnode_type_t type, vnode_t **out_vn);
 int vfs_remove(vnode_t *vn, const char *name);
+int vfs_read(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_read);
+int vfs_write(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_written);
+void vfs_init();

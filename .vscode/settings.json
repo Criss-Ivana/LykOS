@@ -36,6 +36,9 @@
         "string_view": "c",
         "ranges": "c",
         "span": "c",
-        "cstdlib": "c"
+        "cstdlib": "c",
+        "fstream": "c",
+        "vfs.h": "c",
+        "lcpu.h": "c"
     }
 }

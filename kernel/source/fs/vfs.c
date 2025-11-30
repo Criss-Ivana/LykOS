@@ -5,7 +5,10 @@
 list_t vfs_list = LIST_INIT;
 list_t mount_point_list = LIST_INIT;
 list_t trie_list = LIST_INIT;
-trie_node_t *root;
+static trie_node_t root;
+vfs_ops_t vfs_ops = {
+    .vfs_mount = vfs_mount,
+};
 
 void print_vfs_list()
 {
@@ -19,12 +22,12 @@ void print_vfs_list()
     }
 }
 
-vfs_t *vfs_alloc(const char *name, vfs_ops_t *ops, size_t block_size, int flags)
+vfs_t *vfs_alloc(const char *name, size_t block_size, int flags)
 {
     vfs_t *vfs = heap_alloc(sizeof(vfs_t));
 
     *vfs = (vfs_t){
-        .vfs_op = ops,
+        .vfs_ops = &vfs_ops,
         .block_size = block_size,
         .flags = flags,
         .covered_vn = NULL,
@@ -70,15 +73,15 @@ trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt)
 
     if (strcmp(path, "/") == 0)
     {
-        root->mount_point = mpt;
-        return root;
+        root.mount_point = mpt;
+        return &root;
     }
 
     int found;
     char path_copy[PATH_MAX_NAME_LEN], *next_slash;
     strcpy(path_copy, path);
 
-    trie_node_t *current = root, *new_node, *child;
+    trie_node_t *current = &root, *new_node, *child;
 
     char *segment = path_copy;
     if (*segment == '/')
@@ -121,14 +124,14 @@ trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt)
 mount_point_t *filepath_to_mountpoint(const char *path)
 {
     if (strcmp(path, "/") == 0)
-        return root->mount_point;
+        return root.mount_point;
 
     int found;
     char path_copy[PATH_MAX_NAME_LEN], *next_slash;
     strcpy(path_copy, path);
 
-    trie_node_t *current = root, *child;
-    mount_point_t *match = root->mount_point;
+    trie_node_t *current = &root, *child;
+    mount_point_t *match = root.mount_point;
 
     char *segment = path_copy;
     while (*segment == '/')
@@ -182,20 +185,40 @@ int vfs_open(const char *path, int flags, vnode_t **out)
 {
     mount_point_t *mp = filepath_to_mountpoint(path);
     vnode_t *curr = mp->mount_vn;
+    vnode_t *next;
+    int res;
+    char tmp[PATH_MAX_NAME_LEN], *segment, saved;
+    strcpy(tmp, path);
+    char *p = tmp;
 
-    while (curr && *path)
+    if (strcmp(path, "/") == 0) {
+        *out = curr;
+        return EOK;
+    }
+    while (*p == '/')
+        p++;
+
+    while (*p != '\0')
     {
-        while(*path == '/')
-            path++;
+        segment = p;
+        while (*p && *p != '/')
+            p++;
+        saved = *p;
+        *p = '\0';
 
-        char *slash = strchr(path, '/');
-        if (slash)
-            *slash = '\0';
-        curr->ops->open(curr, flags, &curr);
-        if (slash)
-            *slash = '/';
+        next = NULL;
+        res = curr->ops->open(curr, segment, &next);
 
-        path += strlen(curr->name);
+        *p = saved;
+        if (res != EOK || next == NULL)
+        {
+            *out = NULL;
+            return ENOENT;
+        }
+
+        curr = next;
+        while (*p == '/')
+            p++;
     }
 
     *out = curr;
@@ -223,7 +246,6 @@ int vfs_read(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t 
         return -1;
 
     return vn->ops->read(vn, buffer, len, offset, out_bytes_read);
-
 }
 
 int vfs_write(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_written)
@@ -236,10 +258,9 @@ int vfs_write(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t
 
 void vfs_init()
 {
-    root = heap_alloc(sizeof(trie_node_t));
-    *root = (trie_node_t){
+    root = (trie_node_t) {
         .children = LIST_INIT,
         .mount_point = NULL,
     };
-    strcpy(root->name, "/");
+    strcpy(root.name,"/");
 }
