@@ -57,3 +57,7 @@ void vm_addrspace_destroy(vm_addrspace_t *as);
 // Address space loading
 
 void vm_addrspace_load(vm_addrspace_t *as);
+
+// Initialization
+
+void vm_init();

@@ -18,3 +18,5 @@ typedef struct smp_cpu
 smp_cpu_t;
 
 extern list_t smp_cpus;
+
+void smp_init();

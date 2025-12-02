@@ -1,5 +1,4 @@
 #include "mm/vm.h"
-#include "internal.h"
 
 #include "arch/types.h"
 #include "bootreq.h"
@@ -103,7 +102,7 @@ void vm_addrspace_load(vm_addrspace_t *as)
     paging_map_load(as->page_map);
 }
 
-// Init
+// Initialization
 
 static vm_addrspace_t *vm_kernel_as;
 

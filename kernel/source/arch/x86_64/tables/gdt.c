@@ -1,4 +1,4 @@
-#include "internal.h"
+#include "arch/x86_64/tables/gdt.h"
 
 #include "log.h"
 #include "mm/mm.h"

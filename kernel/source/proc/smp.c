@@ -1,5 +1,4 @@
 #include "proc/smp.h"
-#include "internal.h"
 
 #include "arch/lcpu.h"
 #include "bootreq.h"
@@ -14,9 +13,12 @@ static proc_t *idle_proc;
 
 [[noreturn]] [[gnu::noinline]] static void thread_idle_func(struct limine_mp_info *mp_info)
 {
-    log(LOG_INFO, "CPU #%02d initialized.", ((thread_t *)mp_info->extra_argument)->assigned_cpu->id);
+    lcpu_init();
 
     lcpu_thread_reg_write((size_t)mp_info->extra_argument);
+
+    log(LOG_INFO, "CPU #%02d initialized. Idling...", ((thread_t *)mp_info->extra_argument)->assigned_cpu->id);
+
     while (true)
         sched_yield();
 }

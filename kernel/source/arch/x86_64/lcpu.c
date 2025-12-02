@@ -1,5 +1,8 @@
 #include "arch/lcpu.h"
-#include "msr.h"
+
+#include "arch/x86_64/msr.h"
+#include "arch/x86_64/tables/gdt.h"
+#include "arch/x86_64/tables/idt.h"
 
 #include <stdint.h>
 
@@ -39,5 +42,11 @@ size_t lcpu_thread_reg_read()
 
 void lcpu_thread_reg_write(size_t t)
 {
-    msr_write(MSR_GS_BASE, (uint64_t)t);
+    x86_64_msr_write(X86_64_MSR_GS_BASE, (uint64_t)t);
+}
+
+void lcpu_init()
+{
+    gdt_load();
+    idt_load();
 }

@@ -1,5 +1,4 @@
 #include "mm/heap.h"
-#include "internal.h"
 
 #include "log.h"
 #include "mm/kmem.h"
@@ -52,6 +51,8 @@ void *heap_realloc(void *obj, size_t old_size, size_t new_size)
 
     return new_obj;
 }
+
+// Initialization
 
 void heap_init()
 {

@@ -1,7 +1,9 @@
 #include <log.h>
 
-#include "mm/internal.h"
-#include "proc/internal.h"
+#include "mm/heap.h"
+#include "mm/pm.h"
+#include "mm/vm.h"
+#include "proc/smp.h"
 
 void kernel_main()
 {

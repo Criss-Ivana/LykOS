@@ -5,6 +5,7 @@ asm_files += files(
 c_files += files(
     'entry.c',
     'int.c',
+    'ioport.c',
     'lcpu.c',
     'msr.c',
     'paging.c',
@@ -12,4 +13,5 @@ c_files += files(
     'thread.c',
 )
 
+subdir('devices')
 subdir('tables')

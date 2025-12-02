@@ -1,5 +1,4 @@
 #include "mm/pm.h"
-#include "internal.h"
 
 #include "arch/types.h"
 #include "bootreq.h"
@@ -102,6 +101,8 @@ void pm_free(uintptr_t addr)
 
     spinlock_release(&slock);
 }
+
+// Initialization
 
 void pm_init()
 {
