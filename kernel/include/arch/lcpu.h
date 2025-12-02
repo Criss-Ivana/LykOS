@@ -2,15 +2,15 @@
 
 #include <stddef.h>
 
-void lcpu_halt();
+void arch_lcpu_halt();
 
-void lcpu_int_mask();
-void lcpu_int_unmask();
-bool lcpu_int_enabled();
+void arch_lcpu_int_mask();
+void arch_lcpu_int_unmask();
+bool arch_lcpu_int_enabled();
 
-void lcpu_relax();
+void arch_lcpu_relax();
 
-size_t lcpu_thread_reg_read();
-void lcpu_thread_reg_write(size_t t);
+size_t arch_lcpu_thread_reg_read();
+void arch_lcpu_thread_reg_write(size_t t);
 
-void lcpu_init();
+void arch_lcpu_init();

@@ -1,7 +1,8 @@
 #include "arch/lcpu.h"
 #include "dev/acpi.h"
 #include "gfx/simplefb.h"
-#include "tables/internal.h"
+#include "arch/x86_64/tables/gdt.h"
+#include "arch/x86_64/tables/idt.h"
 #include "log.h"
 #include "proc/smp.h"
 #include "proc/thread.h"
@@ -13,7 +14,7 @@ static cpu_t early_cpu = (cpu_t) {
 };
 
 static thread_t early_thread = (thread_t) {
-    .context = (thread_context_t) {
+    .context = (arch_thread_context_t) {
         .self = &early_thread.context
     },
     .tid = 0,
@@ -31,7 +32,7 @@ void __entry()
 
     acpi_init();
 
-    lcpu_thread_reg_write((size_t)&early_thread.context);
+    arch_lcpu_thread_reg_write((size_t)&early_thread.context);
 
     kernel_main();
 }

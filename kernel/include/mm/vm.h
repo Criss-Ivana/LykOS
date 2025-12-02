@@ -38,7 +38,7 @@ vm_segment_t;
 typedef struct
 {
     list_t segments;
-    paging_map_t *page_map;
+    arch_paging_map_t *page_map;
     spinlock_t slock;
 }
 vm_addrspace_t;

@@ -13,9 +13,9 @@ static proc_t *idle_proc;
 
 [[noreturn]] [[gnu::noinline]] static void thread_idle_func(struct limine_mp_info *mp_info)
 {
-    lcpu_init();
+    arch_lcpu_init();
 
-    lcpu_thread_reg_write((size_t)mp_info->extra_argument);
+    arch_lcpu_thread_reg_write((size_t)mp_info->extra_argument);
 
     log(LOG_INFO, "CPU #%02d initialized. Idling...", ((thread_t *)mp_info->extra_argument)->assigned_cpu->id);
 

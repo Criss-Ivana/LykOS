@@ -31,7 +31,7 @@ static void sched_preemt()
     thread_t *new = pick_next_thread();
     spinlock_release(&slock);
 
-    thread_context_switch(&old->context, &new->context);
+    arch_thread_context_switch(&old->context, &new->context);
 }
 
 // This function will be called from the assembly function `__thread_context_switch`.
@@ -56,7 +56,7 @@ void sched_enqueue(thread_t *t)
 
 thread_t *sched_get_curr_thread()
 {
-    return (thread_t *)lcpu_thread_reg_read();
+    return (thread_t *)arch_lcpu_thread_reg_read();
 }
 
 void sched_yield()
@@ -66,5 +66,5 @@ void sched_yield()
     thread_t *new = pick_next_thread();
     spinlock_release(&slock);
 
-    thread_context_switch(&old->context, &new->context);
+    arch_thread_context_switch(&old->context, &new->context);
 }

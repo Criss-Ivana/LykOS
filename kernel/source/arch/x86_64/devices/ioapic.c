@@ -196,8 +196,9 @@ void x86_64_ioapic_map_legacy_irq(uint8_t irq, uint8_t lapic_id, bool fallback_l
 
 size_t arch_irq_alloc_global()
 {
-
+    return 0;
 }
+
 void arch_irq_free_global(size_t global_irq)
 {
 

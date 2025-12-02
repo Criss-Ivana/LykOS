@@ -12,7 +12,7 @@ typedef struct thread_context
     uint64_t rsp;
 }
 __attribute__((packed))
-thread_context_t;
+arch_thread_context_t;
 
-void thread_context_init(thread_context_t *context, bool user, uintptr_t entry);
-void thread_context_switch(thread_context_t *curr, thread_context_t *next);
+void arch_thread_context_init(arch_thread_context_t *context, bool user, uintptr_t entry);
+void arch_thread_context_switch(arch_thread_context_t *curr, arch_thread_context_t *next);

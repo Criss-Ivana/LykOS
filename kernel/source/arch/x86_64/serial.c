@@ -4,7 +4,7 @@
 
 #define COM1 0x3F8
 
-void serial_write(const char *str)
+void arch_serial_write(const char *str)
 {
     while (*str)
         x86_64_ioport_outb(COM1, *str++);

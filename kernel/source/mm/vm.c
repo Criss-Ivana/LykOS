@@ -31,14 +31,14 @@ int vm_map(vm_addrspace_t *as, uintptr_t vaddr, size_t length,
         FOREACH(n, object->pages)
         {
             vm_page_t *page = LIST_GET_CONTAINER(n, vm_page_t, list_node);
-            paging_map_page(as->page_map, vaddr += ARCH_PAGE_GRAN, page->paddr, ARCH_PAGE_GRAN, prot);
+            arch_paging_map_page(as->page_map, vaddr += ARCH_PAGE_GRAN, page->paddr, ARCH_PAGE_GRAN, prot);
         }
         spinlock_release(&object->slock);
     }
     else
     {
         for (size_t i = 0; i < length; i += ARCH_PAGE_GRAN)
-            paging_map_page(as->page_map, vaddr + i, offset + i, ARCH_PAGE_GRAN, prot);
+            arch_paging_map_page(as->page_map, vaddr + i, offset + i, ARCH_PAGE_GRAN, prot);
     }
 
     spinlock_release(&as->slock);
@@ -73,7 +73,7 @@ vm_addrspace_t *vm_map_create()
     vm_addrspace_t *map = heap_alloc(sizeof(vm_addrspace_t));
     *map = (vm_addrspace_t) {
         .segments = LIST_INIT,
-        .page_map = paging_map_create(),
+        .page_map = arch_paging_map_create(),
         .slock = SPINLOCK_INIT
     };
 
@@ -91,7 +91,7 @@ void vm_map_destroy(vm_addrspace_t *as)
         seg = next;
     }
 
-    paging_map_destroy(as->page_map);
+    arch_paging_map_destroy(as->page_map);
     heap_free(as);
 }
 
@@ -99,7 +99,7 @@ void vm_map_destroy(vm_addrspace_t *as)
 
 void vm_addrspace_load(vm_addrspace_t *as)
 {
-    paging_map_load(as->page_map);
+    arch_paging_map_load(as->page_map);
 }
 
 // Initialization
@@ -108,7 +108,7 @@ static vm_addrspace_t *vm_kernel_as;
 
 void vm_init()
 {
-    paging_init();
+    arch_paging_init();
 
     vm_kernel_as = vm_map_create();
 

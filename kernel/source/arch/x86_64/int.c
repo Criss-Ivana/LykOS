@@ -28,7 +28,7 @@ void arch_int_handler(cpu_state_t *cpu_state)
     if (cpu_state->int_no < 32)
     {
         log(LOG_INFO, "CPU EXCEPTION: %llx %#llx", cpu_state->int_no, cpu_state->err_code);
-        lcpu_halt();
+        arch_lcpu_halt();
     }
     else
     {

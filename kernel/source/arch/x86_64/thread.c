@@ -28,9 +28,9 @@ typedef struct
 __attribute__((packed))
 thread_init_stack_kernel_t;
 
-extern __attribute__((naked)) void __thread_context_switch(thread_context_t *new, thread_context_t *old);
+extern __attribute__((naked)) void __thread_context_switch(arch_thread_context_t *new, arch_thread_context_t *old);
 
-void thread_context_init(thread_context_t *context, bool user, uintptr_t entry)
+void arch_thread_context_init(arch_thread_context_t *context, bool user, uintptr_t entry)
 {
     context->self = context;
     context->stack_base = pm_alloc(0) + HHDM + ARCH_PAGE_GRAN;
@@ -39,8 +39,8 @@ void thread_context_init(thread_context_t *context, bool user, uintptr_t entry)
     ((thread_init_stack_kernel_t *)context->rsp)->entry = entry;
 }
 
-void thread_context_switch(thread_context_t *curr, thread_context_t *next)
+void arch_thread_context_switch(arch_thread_context_t *curr, arch_thread_context_t *next)
 {
-    lcpu_thread_reg_write((size_t)next);
+    arch_lcpu_thread_reg_write((size_t)next);
     __thread_context_switch(curr, next); // This function calls `sched_drop` for `curr` too.
 }
