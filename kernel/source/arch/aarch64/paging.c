@@ -18,7 +18,7 @@
 
 typedef uint64_t pte_t;
 
-struct paging_map
+struct arch_paging_map
 {
     pte_t *pml4[2];
 };
@@ -39,7 +39,7 @@ static uint64_t translate_prot(int prot)
 
 // Mapping and unmapping
 
-int paging_map_page(paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t size, int prot)
+int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t size, int prot)
 {
     uint64_t l0e = (vaddr >> 39) & 0x1FF;
     uint64_t l1e = (vaddr >> 30) & 0x1FF;
@@ -110,9 +110,9 @@ int paging_map_page(paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t 
 pte_t *higher_half_pml4;
 bool ttbr1_loaded = false;
 
-paging_map_t *paging_map_create()
+arch_paging_map_t *arch_paging_map_create()
 {
-    paging_map_t *map = heap_alloc(sizeof(paging_map_t));
+    arch_paging_map_t *map = heap_alloc(sizeof(arch_paging_map_t));
     map->pml4[0] = (pte_t *)(pm_alloc(0) + HHDM);
     memset(map->pml4, 0, 0x1000);
     map->pml4[1] = higher_half_pml4;
@@ -120,7 +120,7 @@ paging_map_t *paging_map_create()
     return map;
 }
 
-void paging_map_destroy(paging_map_t *map)
+void arch_paging_map_destroy(arch_paging_map_t *map)
 {
     heap_free(map);
     // TODO: destroy page tables
@@ -128,7 +128,7 @@ void paging_map_destroy(paging_map_t *map)
 
 // Map loading
 
-void paging_map_load(paging_map_t *map)
+void arch_paging_map_load(arch_paging_map_t *map)
 {
     asm volatile(
         "msr ttbr0_el1, %0\n"
@@ -152,7 +152,7 @@ void paging_map_load(paging_map_t *map)
 
 // Init
 
-void paging_init()
+void arch_paging_init()
 {
     higher_half_pml4 = (pte_t *)(pm_alloc(0) + HHDM);
     memset(higher_half_pml4, 0, 0x1000);

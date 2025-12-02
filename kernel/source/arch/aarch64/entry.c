@@ -20,7 +20,7 @@ void __entry()
     simplefb_init();
     log(LOG_INFO, "Kernel compiled on %s at %s.", __DATE__, __TIME__);
 
-    lcpu_thread_reg_write((size_t)&early_thread.context);
+    arch_lcpu_thread_reg_write((size_t)&early_thread.context);
 
     kernel_main();
 }

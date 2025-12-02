@@ -3,6 +3,7 @@ as_files += files(
 )
 
 c_files += files(
+    'entry.c',
     'lcpu.c',
     'paging.c',
     'serial.c',
