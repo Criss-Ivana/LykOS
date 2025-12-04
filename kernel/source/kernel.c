@@ -98,9 +98,7 @@ void kernel_main()
     heap_init();
     vm_init();
 
-    ramfs_init();
-    log(LOG_INFO, "Ramfs init complete, trying ramfs_test:\n\n");
-    ramfs_test();
+    vfs_init();
 
     smp_init();
 

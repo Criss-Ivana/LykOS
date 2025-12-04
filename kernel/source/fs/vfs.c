@@ -1,4 +1,5 @@
 #include "fs/vfs.h"
+#include "fs/ramfs.h"
 
 // VFS LIST MANAGEMENT
 
@@ -6,9 +7,6 @@ list_t vfs_list = LIST_INIT;
 list_t mount_point_list = LIST_INIT;
 list_t trie_list = LIST_INIT;
 static trie_node_t root;
-vfs_ops_t vfs_ops = {
-    .vfs_mount = vfs_mount,
-};
 
 // UTILITY
 
@@ -28,7 +26,7 @@ void consume_path(char *path, int *comp_len, char **path_left)
 
     start = path;
     end = start;
-    while (*end != '\0' && *end != '/')
+    while (*end && *end != '/')
         end++;
 
     *comp_len = end - start;
@@ -38,23 +36,6 @@ void consume_path(char *path, int *comp_len, char **path_left)
         *path_left = NULL;
     else
         *path_left = end;
-}
-
-vfs_t *vfs_alloc(const char *name, size_t block_size, int flags)
-{
-    vfs_t *vfs = heap_alloc(sizeof(vfs_t));
-
-    *vfs = (vfs_t){
-        .vfs_ops = &vfs_ops,
-        .block_size = block_size,
-        .flags = flags,
-        .covered_vn = NULL,
-        .private_data = NULL,
-    };
-    strcpy(vfs->name, name);
-    list_append(&vfs_list, &vfs->list_node);
-
-    return vfs;
 }
 
 trie_node_t *create_trie_node(const char *name)
@@ -165,54 +146,16 @@ mount_point_t *filepath_to_mountpoint(const char *path)
  * Veneer layer.
  */
 
-mount_point_t *vfs_mount(vfs_t *vfs, const char *path)
-{
-    mount_point_t *mp = heap_alloc(sizeof(mount_point_t));
-    *mp = (mount_point_t){
-        .vfs = vfs};
-    strcpy(mp->path, path);
-    list_append(&mount_point_list, &mp->list_node);
-    return mp;
-}
+
 
 int vfs_lookup(const char *path, int flags, vnode_t **out)
 {
-    mount_point_t *mp = filepath_to_mountpoint(path);
-    vnode_t *current = mp->mount_vn, *child;
+    vnode_t *curr = root.mount_point.
     char *p, *q, segment[PATH_MAX_NAME_LEN], path_copy[PATH_MAX_NAME_LEN];
     int len, res;
 
-    strcpy(path_copy,path);
-    consume_path(path_copy, &len, &q);
-    if (len == 0)
-    {
-        *out = current;
-        return EOK;
-    }
-    p = path_copy;
-    while (*p == '/')
-        p++;
-    do
-    {
-        strncpy(segment, p, len);
-        segment[len] = '\0';
 
-        child = NULL;
-        res = current->ops->open(current, segment, &child);
-
-        if (res != EOK || child == NULL)
-        {
-            *out = NULL;
-            return ENOENT;
-        }
-
-        current = child;
-        if (!q)
-        {
-            p = q;
-            consume_path(p, &len, &q);
-        }
-    }while(q);
+    
 
     *out = current;
     return EOK;
@@ -251,9 +194,17 @@ int vfs_write(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t
 
 void vfs_init()
 {
+    vfs_t *ramfs = ramfs_create();
     root = (trie_node_t){
         .children = LIST_INIT,
         .mount_point = NULL,
+        .name = strdup("/")
     };
-    strcpy(root.name, "/");
+    mount_point_t *mp = heap_alloc(sizeof(mount_point_t));
+    *mp = (mount_point_t){
+        .vfs = ramfs,
+        .path = strdup("/")
+    };
+    list_append(&mount_point_list, &mp->list_node);;
+    insert_path_into_trie("/", mp);
 }

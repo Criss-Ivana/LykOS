@@ -41,10 +41,10 @@ struct vfs
 {
     vfs_ops_t *vfs_ops;
     vnode_t *covered_vn;
-    char name[VFS_MAX_NAME_LEN];
+    char *name;
     int flags;
     size_t block_size;
-    void *private_data; // private data should be a pointer to this instance of this vfs ???
+    void *private_data; //Pointer la root ramfs
 
     list_node_t list_node;
 };
@@ -54,7 +54,7 @@ struct vfs_ops
 {
     mount_point_t *(*vfs_mount)(vfs_t *vfs, const char *path);
     // int (*vfs_unmount)(vfs_t *vfs);
-    // int (*vfs_root)(vfs_t *vfs, vnode_t **root_vnode);
+    int (*vfs_root)(vfs_t *vfs, vnode_t **root_vnode);
     //int (*vfs_statfs)(vfs_t *vfs, statfs *statbuf);
     // int (*vfs_sync)(vfs_t *vfs);
 };
@@ -63,7 +63,7 @@ struct vfs_ops
 
 struct mount_point
 {
-    char path[PATH_MAX_NAME_LEN];
+    char *path;
     vfs_t *vfs;
     vnode_t *mount_vn;
 
@@ -74,7 +74,7 @@ struct mount_point
 struct trie_node
 {
     list_t children;
-    char name[PATH_MAX_NAME_LEN];
+    char *name;
     mount_point_t *mount_point; // If it's not a mount point, this is NULL
 
     list_node_t list_node;
@@ -85,7 +85,7 @@ struct trie_node
 
 struct vnode
 {
-    char *name;
+    char name[VNODE_MAX_NAME_LEN];
     vnode_type_t type;
     uint32_t perm;
     uint64_t ctime;

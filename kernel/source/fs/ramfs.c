@@ -1,12 +1,63 @@
 #include "fs/ramfs.h"
+#include <log.h>
+#include <stdint.h>
+#include "mm/heap.h"
+#include "mm/mm.h"
+#include "mm/pm.h"
+#include "uapi/errno.h"
+#include "arch/types.h"
+#include "utils/list.h"
+#include "utils/math.h"
+#include "utils/string.h"
+#include "hhdm.h"
 
-vnode_ops_t ramfs_ops = {
+#define INITIAL_PAGE_CAPACITY 1
+
+typedef struct ramfs_node ramfs_node_t;
+typedef struct ramfs_page ramfs_page_t;
+
+struct ramfs_node
+{
+    vnode_t vn;
+
+    list_t children;
+    ramfs_page_t *pages;
+    size_t page_count; //pages used up
+    size_t page_capacity; //total number
+
+
+    list_node_t list_node;
+};
+
+struct ramfs_page
+{
+    void *data;
+};
+
+vnode_t *ramfs_root(vfs_t *self);
+
+vfs_ops_t ramfs_ops = {
+    .vfs_root = ramfs_root
+};
+
+int ramfs_open  (vnode_t *self, const char *name, vnode_t **out);
+int ramfs_close (vnode_t *self);
+int ramfs_read  (vnode_t *self, void *buffer, uint64_t count, uint64_t offset, uint64_t *out);
+int ramfs_write (vnode_t *self, const void *buffer, uint64_t count, uint64_t offset, uint64_t *out);
+int ramfs_create(vnode_t *self, const char *name, vnode_type_t t, vnode_t **out);
+
+vnode_ops_t ramfs_node_ops = {
     .open   = ramfs_open,
     .close  = ramfs_close,
     .read   = ramfs_read,
     .write  = ramfs_write,
     .create = ramfs_create,
 };
+
+vnode_t *ramfs_root(vfs_t *self)
+{
+    return (vnode_t *)self->private_data;
+}
 
 int ramfs_open(vnode_t *self, const char *name, vnode_t **out)
 {
@@ -126,9 +177,9 @@ int ramfs_create(vnode_t *self, const char *name, vnode_type_t t, vnode_t **out)
     *child = (ramfs_node_t) {
         .vn = (vnode_t) {
             .type = t,
-            .ctime = 0, // To modify
-            .mtime = 0, // To modify
-            .atime = 0, // To modify
+            .ctime = 0, // TODO: modify
+            .mtime = 0, // TODO: modify
+            .atime = 0, // TODO: modify
             .name = strdup(name),
             .size = 0,
             .ops  = &ramfs_ops,
@@ -153,24 +204,19 @@ int ramfs_ioctl(vnode_t *self, uint64_t request, void *args)
     return ENOTSUP;
 }
 
-void ramfs_init() //Specific locatie + nume? ramfs pt toate sau custom name?
+vfs_t *ramfs_create()
 {
-    vfs_init();
-
-    vfs_t *ramfs_vfs = vfs_alloc("ramfs", ARCH_PAGE_GRAN, 0);
-
     ramfs_node_t *ramfs_root = heap_alloc(sizeof(ramfs_node_t));
-
     *ramfs_root = (ramfs_node_t){
         .vn = {
             .name = strdup("/"),
             .type = VDIR,
-            .ctime = 0, // To modify
-            .mtime = 0, // To modify
-            .atime = 0, // To modify
+            .ctime = 0, // TODO: modify
+            .mtime = 0, // TODO: modify
+            .atime = 0, // TODO: modify
             .size = 0,
             .ops  = &ramfs_ops,
-            .inode = &ramfs_vfs,
+            .inode = &ramfs_root,
             .ref_count = 1
         },
         .children = LIST_INIT,
@@ -180,11 +226,15 @@ void ramfs_init() //Specific locatie + nume? ramfs pt toate sau custom name?
         .page_capacity = INITIAL_PAGE_CAPACITY,
     };
 
-    ramfs_vfs->covered_vn=&ramfs_root->vn;
+    vfs_t *ramfs_vfs = heap_alloc(sizeof(vfs_t));
+    *ramfs_vfs = (vfs_t){
+        .vfs_ops = &vfs_ops,
+        .block_size = ARCH_PAGE_GRAN,
+        .name = strdup("ramfs"),
+        .flags = 0,
+        .covered_vn = NULL,
+        .private_data = &ramfs_root
+    };
 
-    mount_point_t *mp = ramfs_vfs->vfs_ops->vfs_mount(ramfs_vfs, "/");
-
-    mp->mount_vn = &ramfs_root->vn;
-    insert_path_into_trie("/", mp);
-    
+    return ramfs_vfs;
 }
