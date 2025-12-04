@@ -13,7 +13,7 @@ void ramfs_test()
     uint64_t out;
 
     log(LOG_INFO, "[TEST] Opening root /");
-    vfs_open("/", 0, &root_out);
+    vfs_lookup("/", 0, &root_out);
     if (!root_out) {
         log(LOG_ERROR, "[TEST] Failed to open root!");
         return;
@@ -74,7 +74,7 @@ void ramfs_test()
     vnode_t *file2;
 
     log(LOG_INFO, "[TEST] Opening /hello.txt by path...");
-    vfs_open("/hello.txt", 0, &file2);
+    vfs_lookup("/hello.txt", 0, &file2);
 
     if (!file2) {
         log(LOG_ERROR, "[TEST] Failed to open file by path!");

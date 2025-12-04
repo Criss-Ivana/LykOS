@@ -44,7 +44,7 @@ struct vfs
     char name[VFS_MAX_NAME_LEN];
     int flags;
     size_t block_size;
-    void *private_data;
+    void *private_data; // private data should be a pointer to this instance of this vfs ???
 
     list_node_t list_node;
 };
@@ -94,8 +94,7 @@ struct vnode
     uint64_t size;
 
     vnode_ops_t *ops;
-    vfs_t *parent_vfs;
-    void *inode; // Filesystem-specific data
+    void *inode;
 
     size_t ref_count;
 };
@@ -120,15 +119,14 @@ struct vnode_ops
 
 void vfs_init(); 
 
+void consume_path(char *path, int *comp_len, char **path_left);
 vfs_t *vfs_alloc(const char *name, size_t block_size, int flags);
-void print_vfs_list(void);
-void print_mount_point_list();
 trie_node_t *create_trie_node(const char *name);
 trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt);
 mount_point_t *filepath_to_mountpoint(const char *path);
 mount_point_t *vfs_mount(vfs_t *vfs, const char *path);
 
-int vfs_open(const char *path, int flags, vnode_t **out);
+int vfs_lookup(const char *path, int flags, vnode_t **out);
 int vfs_close(vnode_t *vn);
 int vfs_create(vnode_t *vn, const char *name, vnode_type_t type, vnode_t **out_vn);
 int vfs_remove(vnode_t *vn, const char *name);

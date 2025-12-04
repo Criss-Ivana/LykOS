@@ -10,16 +10,34 @@ vfs_ops_t vfs_ops = {
     .vfs_mount = vfs_mount,
 };
 
-void print_vfs_list()
+// UTILITY
+
+void consume_path(char *path, int *comp_len, char **path_left)
 {
-    vfs_t *vfs;
-    size_t count = 0;
-    FOREACH(n, vfs_list)
-    {
-        vfs = LIST_GET_CONTAINER(n, vfs_t, list_node);
-        log(LOG_INFO, "VFS %zu: block size = %zu, flags = %d", count, vfs->block_size, vfs->flags);
-        count++;
+    char *start;
+    char *end;
+
+    while (*path == '/')
+        path++;
+
+    if (*path == '\0') {
+        *comp_len = 0;
+        *path_left = NULL;
+        return;
     }
+
+    start = path;
+    end = start;
+    while (*end != '\0' && *end != '/')
+        end++;
+
+    *comp_len = end - start;
+    while (*end == '/')
+        end++;
+    if(*end == '\0')
+        *path_left = NULL;
+    else
+        *path_left = end;
 }
 
 vfs_t *vfs_alloc(const char *name, size_t block_size, int flags)
@@ -39,23 +57,6 @@ vfs_t *vfs_alloc(const char *name, size_t block_size, int flags)
     return vfs;
 }
 
-// MOUNT POINT LIST MANAGEMENT
-
-void print_mount_point_list()
-{
-    size_t count = 0;
-    mount_point_t *mp;
-    FOREACH(n, mount_point_list)
-    {
-        mp = LIST_GET_CONTAINER(n, mount_point_t, list_node);
-        log(LOG_INFO, "Mount Point %zu: Path = %s, VFS = %s, Root Vnode = %p",
-            count, mp->path, mp->vfs->name, mp->mount_vn);
-        count++;
-    }
-}
-
-// FILE PATH TO VFS PARENT
-
 trie_node_t *create_trie_node(const char *name)
 {
     trie_node_t *node = heap_alloc(sizeof(trie_node_t));
@@ -70,29 +71,24 @@ trie_node_t *create_trie_node(const char *name)
 
 trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt)
 {
-
-    if (strcmp(path, "/") == 0)
+    char *p, *q, segment[PATH_MAX_NAME_LEN],path_copy[PATH_MAX_NAME_LEN];
+    int len, found;
+    trie_node_t *current = &root, *child, *new_node;
+    
+    strcpy(path_copy,path);
+    consume_path(path_copy, &len, &q);
+    if (len == 0)
     {
         root.mount_point = mpt;
         return &root;
     }
-
-    int found;
-    char path_copy[PATH_MAX_NAME_LEN], *next_slash;
-    strcpy(path_copy, path);
-
-    trie_node_t *current = &root, *new_node, *child;
-
-    char *segment = path_copy;
-    if (*segment == '/')
-        segment++;
-
-    while (*segment)
+    p = path_copy;
+    while (*p == '/')
+        p++;
+    do
     {
-        next_slash = strchr(segment, '/');
-        if (next_slash)
-            *next_slash = '\0';
-
+        strncpy(segment, p, len);
+        segment[len] = '\0';
         found = 0;
         FOREACH(n, current->children)
         {
@@ -104,18 +100,18 @@ trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt)
                 break;
             }
         }
-
         if (!found)
         {
             new_node = create_trie_node(segment);
             list_append(&current->children, &new_node->list_node);
             current = new_node;
         }
-
-        if (!next_slash)
-            break;
-        segment = next_slash + 1;
-    }
+        if (!q)
+        {
+            p = q;
+            consume_path(p, &len, &q);
+        }
+    }while(q);
 
     current->mount_point = mpt;
     return current;
@@ -123,26 +119,23 @@ trie_node_t *insert_path_into_trie(const char *path, mount_point_t *mpt)
 
 mount_point_t *filepath_to_mountpoint(const char *path)
 {
-    if (strcmp(path, "/") == 0)
-        return root.mount_point;
-
-    int found;
-    char path_copy[PATH_MAX_NAME_LEN], *next_slash;
-    strcpy(path_copy, path);
-
+    char *p, *q, segment[PATH_MAX_NAME_LEN], path_copy[PATH_MAX_NAME_LEN];
+    int len, found;
     trie_node_t *current = &root, *child;
     mount_point_t *match = root.mount_point;
 
-    char *segment = path_copy;
-    while (*segment == '/')
-        segment++;
+    strcpy(path_copy,path);
+    consume_path(path_copy, &len, &q);
+    if (len == 0)
+        return root.mount_point;
 
-    while (*segment)
+    p = path_copy;
+    while (*p == '/')
+        p++;
+    do
     {
-        next_slash = strchr(segment, '/');
-        if (next_slash)
-            *next_slash = '\0';
-
+        strncpy(segment, p, len);
+        segment[len] = '\0';
         found = 0;
         FOREACH(n, current->children)
         {
@@ -156,13 +149,14 @@ mount_point_t *filepath_to_mountpoint(const char *path)
                 break;
             }
         }
-
         if (!found)
             break;
-        if (!next_slash)
-            break;
-        segment = next_slash + 1;
-    }
+        if (!q)
+        {
+            p = q;
+            consume_path(p, &len, &q);
+        }
+    }while(q);
 
     return match;
 }
@@ -181,47 +175,46 @@ mount_point_t *vfs_mount(vfs_t *vfs, const char *path)
     return mp;
 }
 
-int vfs_open(const char *path, int flags, vnode_t **out)
+int vfs_lookup(const char *path, int flags, vnode_t **out)
 {
     mount_point_t *mp = filepath_to_mountpoint(path);
-    vnode_t *curr = mp->mount_vn;
-    vnode_t *next;
-    int res;
-    char tmp[PATH_MAX_NAME_LEN], *segment, saved;
-    strcpy(tmp, path);
-    char *p = tmp;
+    vnode_t *current = mp->mount_vn, *child;
+    char *p, *q, segment[PATH_MAX_NAME_LEN], path_copy[PATH_MAX_NAME_LEN];
+    int len, res;
 
-    if (strcmp(path, "/") == 0) {
-        *out = curr;
+    strcpy(path_copy,path);
+    consume_path(path_copy, &len, &q);
+    if (len == 0)
+    {
+        *out = current;
         return EOK;
     }
+    p = path_copy;
     while (*p == '/')
         p++;
-
-    while (*p != '\0')
+    do
     {
-        segment = p;
-        while (*p && *p != '/')
-            p++;
-        saved = *p;
-        *p = '\0';
+        strncpy(segment, p, len);
+        segment[len] = '\0';
 
-        next = NULL;
-        res = curr->ops->open(curr, segment, &next);
+        child = NULL;
+        res = current->ops->open(current, segment, &child);
 
-        *p = saved;
-        if (res != EOK || next == NULL)
+        if (res != EOK || child == NULL)
         {
             *out = NULL;
             return ENOENT;
         }
 
-        curr = next;
-        while (*p == '/')
-            p++;
-    }
+        current = child;
+        if (!q)
+        {
+            p = q;
+            consume_path(p, &len, &q);
+        }
+    }while(q);
 
-    *out = curr;
+    *out = current;
     return EOK;
 }
 
@@ -258,9 +251,9 @@ int vfs_write(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t
 
 void vfs_init()
 {
-    root = (trie_node_t) {
+    root = (trie_node_t){
         .children = LIST_INIT,
         .mount_point = NULL,
     };
-    strcpy(root.name,"/");
+    strcpy(root.name, "/");
 }
