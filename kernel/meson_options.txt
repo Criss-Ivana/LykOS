@@ -1,5 +1,5 @@
 option(
-    'target_arch',
+    'arch',
     type: 'combo',
     choices: ['x86_64', 'aarch64'],
     value: 'x86_64',

@@ -6,9 +6,9 @@ project(
     default_options: ['c_std=gnu23', 'warning_level=2'],
 )
 
-target_arch = get_option('target_arch')
+arch = get_option('arch')
 
-if target_arch == 'x86_64'
+if arch == 'x86_64'
     add_languages('nasm')
 endif
 
@@ -52,10 +52,10 @@ ld_flags = [
     '-gc-sections',
     '-z', 'max-page-size=0x1000',
     '-g',
-    '-T', meson.current_source_dir() / f'linker-scripts/@target_arch@.ld',
+    '-T', meson.current_source_dir() / f'linker-scripts/@arch@.ld',
 ]
 
-if target_arch == 'x86_64'
+if arch == 'x86_64'
     c_flags += [
         '-target', 'x86_64-elf',
         '-m64',
@@ -66,7 +66,7 @@ if target_arch == 'x86_64'
     ld_flags += [
         '-m', 'elf_x86_64',
     ]
-elif target_arch == 'aarch64'
+elif arch == 'aarch64'
     c_flags += [
         '-target', 'aarch64-unknown-none',
         '-mgeneral-regs-only',
@@ -108,7 +108,7 @@ output_static_lib = static_library(
 
 custom_target(
     input: output_static_lib,
-    output: f'kernel-@target_arch@.elf',
+    output: f'kernel-@arch@.elf',
     command: [
         meson.get_external_property('ld'),
         ld_flags,
