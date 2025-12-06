@@ -1,0 +1,17 @@
+#pragma once
+
+#include <stdint.h>
+
+typedef struct
+{
+    uint8_t sec;
+    uint8_t min;
+    uint8_t hour;
+    uint8_t day;
+    uint8_t month;
+    uint8_t year;
+    uint64_t epoch;
+}
+arch_clock_snapshot_t;
+
+void arch_clock_get_snapshot(arch_clock_snapshot_t *out);

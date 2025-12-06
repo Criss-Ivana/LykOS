@@ -1,4 +1,4 @@
-subdir('arch/' + target_arch)
+subdir('arch/' + arch)
 subdir('dev')
 subdir('gfx')
 subdir('mm')

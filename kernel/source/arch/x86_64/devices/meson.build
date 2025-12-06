@@ -3,4 +3,5 @@ c_files += files(
     'lapic.c',
     'pic.c',
     'pit.c',
+    'rtc.c',
 )
