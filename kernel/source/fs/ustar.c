@@ -1,0 +1,152 @@
+#include "fs/ustar.h"
+
+#include <stddef.h>
+#include <stdint.h>
+
+#include "mm/mm.h"
+#include "mm/heap.h"
+
+#include "utils/string.h"
+#include "utils/printf.h"
+
+#include "fs/vfs.h"
+#include "fs/ramfs.h"
+
+#define USTAR_BLOCK_SIZE 512
+
+// Helpers
+static uint64_t ustar_parse_octal(const char *str, size_t len)
+{
+    uint64_t result = 0;
+    for (size_t i = 0; i < len && str[i] >= '0' && str[i] <= '7'; i++)
+    {
+        result = (result << 3) + (str[i] - '0');
+    }
+    return result;
+}
+
+static size_t ustar_get_size(const ustar_header_t *header)
+{
+    return (size_t)ustar_parse_octal(header->size, sizeof(header->size));
+}
+
+static int ustar_validate_checksum(const ustar_header_t *header)
+{
+    const unsigned char *bytes = (const unsigned char *)header;
+    unsigned int sum = 0;
+    unsigned int stored = (unsigned int)ustar_parse_octal(header->checksum, sizeof(header->checksum));
+
+    for (size_t i = 0; i < sizeof(ustar_header_t); i++)
+    {
+        if ( i >= offsetof(ustar_header_t, checksum) &&
+            i < offsetof(ustar_header_t, checksum) + sizeof(header->checksum))
+        {
+            sum += ' ';
+        } else {
+            sum += bytes[i];
+        }
+    }
+
+    return sum == stored;
+}
+
+// Main logic to load archive
+static vnode_t *create_path(vnode_t *root, const char *path, int is_dir)
+{
+    if (!path || !*path) return root;
+
+    char *path_copy = strdup(path);
+    char *saveptr;
+    char *token = strtok_r(path_copy, "/", &saveptr);
+    vnode_t *current = root;
+
+    while (token)
+    {
+        char *next_token = strtok_r(NULL, "/", &saveptr);
+        int is_last = (next_token == NULL);
+
+        vnode_t *child = NULL;
+        if (current->ops->lookup(current, token, &child) != EOK || !child)
+        {
+            vnode_type_t type;
+            if (is_last && !is_dir) type = VREG;
+            else type = VDIR;
+
+            if(vfs_create(current, token, type, &child) != EOK)
+            {
+                heap_free(path_copy);
+                return NULL;
+            }
+        }
+
+        current = child;
+        token = next_token;
+    }
+
+    heap_free(path_copy);
+    return current;
+}
+
+int ustar_extract(const void *archive, uint64_t archive_size, vnode_t *dest_vn)
+{
+    if ( !archive || !dest_vn) return EINVAL;
+
+    const uint8_t *data = (const uint8_t *)archive;
+    uint64_t offset = 0;
+
+    while (offset + USTAR_BLOCK_SIZE <= archive_size)
+    {
+        const ustar_header_t *header = (const ustar_header_t *)(data + offset);
+
+        if (header->name[0] == '\0') break; // check for archive end
+
+        if (strncmp(header->magic, "ustar", 5) != 0) // check magic
+        {
+            offset += USTAR_BLOCK_SIZE;
+            continue;
+        }
+
+        if (!ustar_validate_checksum(header))
+        {
+            offset += USTAR_BLOCK_SIZE;
+            continue;
+        }
+
+        size_t file_size = ustar_get_size(header);
+        offset += USTAR_BLOCK_SIZE;
+
+        // build full path
+        char full_path[256];
+        if (header->prefix[0] != '\0') snprintf(full_path, sizeof(full_path), "%s/%s", header->prefix, header->name);
+        else strncpy(full_path, header->name, sizeof(full_path) -1);
+
+        switch (header->typeflag)
+        {
+            case USTAR_DIRECTORY:
+            {
+                create_path(dest_vn, full_path, 1);
+                break;
+            }
+
+            case USTAR_REGULAR:
+            {
+                vnode_t *file_vn = create_path(dest_vn, full_path, 0);
+                if(file_vn && file_size > 0)
+                {
+                    uint64_t written;
+                    vfs_write(file_vn, (void *)(data+offset), file_size, 0, &written);
+                }
+                break;
+            }
+
+            default:
+                break;
+
+        }
+
+        uint64_t blocks = (file_size+USTAR_BLOCK_SIZE-1) / USTAR_BLOCK_SIZE;
+        offset += blocks * USTAR_BLOCK_SIZE;
+    }
+
+    return EOK;
+}
