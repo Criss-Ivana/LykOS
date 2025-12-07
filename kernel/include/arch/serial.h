@@ -1,3 +1,3 @@
 #pragma once
 
-void serial_write(const char *str);
+void arch_serial_write(const char *str);

@@ -1,4 +1,4 @@
-#include "internal.h"
+#include "arch/x86_64/tables/tss.h"
 
 void tss_set_rsp0(tss_t *tss, uintptr_t stack_pointer)
 {

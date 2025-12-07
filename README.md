@@ -2,6 +2,7 @@
 
 ## Overview
 This is the main repository of LykOS, an open source hobbyist operating system targeting 64-bit architectures.
+![Screenshot](../assets/screenshots/20251125_195314.png?raw=true)
 
 ## Features
 - x86_64 & aarch64 support

@@ -19,3 +19,7 @@ static void _cleanup_free(void *p)
 #define CLEANUP __attribute__((cleanup(_cleanup_free)))
 
 #define CLEANUP_FUNC(func) __attribute__((cleanup(func)))
+
+// Initialization
+
+void heap_init();

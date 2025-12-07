@@ -20,7 +20,7 @@ thread_status_t;
 
 struct thread
 {
-    thread_context_t context;
+    arch_thread_context_t context;
 
     size_t tid;
     proc_t *owner;

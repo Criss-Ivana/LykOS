@@ -27,7 +27,7 @@ custom/kernel {
             --buildtype=release \
             --cross-file=$SOURCES_DIR/kernel/cross-files/$OPTION_arch.ini \
             --prefix=$PREFIX \
-            -Dtarget_arch=$OPTION_arch \
+            -Darch=$OPTION_arch \
             $SOURCES_DIR/kernel
     </sh>
     build: <sh>

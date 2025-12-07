@@ -18,8 +18,8 @@ void log(log_level_t level, const char *format, ...)
 
     spinlock_acquire(&slock);
 
-    serial_write(buf);
-    serial_write("\n");
+    arch_serial_write(buf);
+    arch_serial_write("\n");
 
     console_write(buf);
 

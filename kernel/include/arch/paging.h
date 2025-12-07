@@ -3,21 +3,21 @@
 #include <stddef.h>
 #include <stdint.h>
 
-typedef struct paging_map paging_map_t;
+typedef struct arch_paging_map arch_paging_map_t;
 
 // Mapping and unmapping
 
-int paging_map_page(paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t size, int prot);
+int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t size, int prot);
 
 // Map creation and destruction
 
-paging_map_t *paging_map_create();
-void paging_map_destroy(paging_map_t *map);
+arch_paging_map_t *arch_paging_map_create();
+void arch_paging_map_destroy(arch_paging_map_t *map);
 
 // Map loading
 
-void paging_map_load(paging_map_t *map);
+void arch_paging_map_load(arch_paging_map_t *map);
 
 // Init
 
-void paging_init();
+void arch_paging_init();
