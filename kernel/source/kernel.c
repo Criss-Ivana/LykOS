@@ -1,15 +1,15 @@
-#include "log.h"
-#include <stddef.h>
-#include <stdint.h>
-
 #include "bootreq.h"
 #include "fs/ustar.h"
 #include "fs/vfs.h"
+#include "log.h"
 #include "mm/heap.h"
 #include "mm/pm.h"
 #include "mm/vm.h"
+#include "mod/ksym.h"
 #include "proc/smp.h"
 #include "utils/string.h"
+#include <stddef.h>
+#include <stdint.h>
 
 void kernel_main()
 {
@@ -36,6 +36,10 @@ void kernel_main()
             break;
         }
     }
+
+    // Load kernel modules
+
+    ksym_init();
 
     smp_init();
 

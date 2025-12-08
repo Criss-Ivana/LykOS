@@ -27,9 +27,9 @@ c_flags = [
     '-ffreestanding',
     '-fno-stack-protector',
     '-fno-stack-check',
-    '-fPIE',
     # Optimization
     '-flto',
+    '-ffat-lto-objects',
     '-O2',
     '-g',
     # Features
@@ -113,7 +113,7 @@ custom_target(
         meson.get_external_property('ld'),
         ld_flags,
         '--whole-archive', '@INPUT@',
-        '--no-whole-archive',
+        '--whole-archive',
         '-o', '@OUTPUT@',
     ],
     install: true,

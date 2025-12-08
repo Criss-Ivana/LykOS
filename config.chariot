@@ -21,6 +21,28 @@ source/support {
     type: "local"
 }
 
+source/tools {
+    url: "tools"
+    type: "local"
+}
+
+tool/ksym {
+    dependencies: [
+        image/clang,
+        source/tools,
+    ]
+    configure: <sh>
+        cp $SOURCES_DIR/tools/ksym.c .
+    </sh>
+    build: <sh>
+        clang ksym.c -O2 -o ksym
+    </sh>
+    install: <sh>
+        install -d $INSTALL_DIR$PREFIX/bin
+        install ksym $INSTALL_DIR$PREFIX/bin
+    </sh>
+}
+
 custom/kernel {
     dependencies: [
         image/meson image/nasm image/clang image/llvm image/lld
@@ -57,9 +79,25 @@ custom/initrd {
     </sh>
 }
 
+custom/kernel_symbols {
+    dependencies: [
+        custom/kernel
+        image/llvm
+        tool/ksym
+    ]
+    options: [ "arch" ]
+    build: <sh>
+        llvm-nm $CUSTOM_DIR/kernel/usr/bin/kernel-$OPTION_arch.elf -n -g > kernel_symbols.txt
+        ksym kernel_symbols.txt kernel_symbols.bin
+    </sh>
+    install: <sh>
+        install kernel_symbols.bin $INSTALL_DIR
+    </sh>
+}
+
 custom/image {
     dependencies: [
-        custom/kernel custom/initrd
+        custom/kernel custom/kernel_symbols custom/initrd
         image/xorriso
         source/limine source/support
     ]
@@ -69,6 +107,7 @@ custom/image {
 
         cp $CUSTOM_DIR/kernel/usr/bin/kernel-$OPTION_arch.elf iso_root/kernel.elf
         cp $CUSTOM_DIR/initrd/initrd.tar iso_root
+        cp $CUSTOM_DIR/kernel_symbols/kernel_symbols.bin iso_root
 
         cp $SOURCES_DIR/support/limine.conf ./iso_root
         cp $SOURCES_DIR/limine/limine-uefi-cd.bin ./iso_root
