@@ -3,6 +3,7 @@
 #include "fs/vfs.h"
 #include "log.h"
 #include "mm/heap.h"
+#include "mm/mm.h"
 #include "mm/pm.h"
 #include "mm/vm.h"
 #include "mod/ksym.h"
