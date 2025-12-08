@@ -107,6 +107,41 @@ char *strstr(const char *s1, const char *s2)
     return NULL;
 }
 
+
+char *strtok_r(char *str, const char *delim, char **saveptr)
+{
+    if (str == NULL)
+        str = *saveptr;
+
+    if (str == NULL || *str == '\0')
+        return NULL;
+
+    // Skip leading delimiters
+    while (*str && strchr(delim, *str))
+        str++;
+
+    if (*str == '\0') {
+        *saveptr = NULL;
+        return NULL;
+    }
+
+    char *token_start = str;
+
+    // Find end of token
+    while (*str && !strchr(delim, *str))
+        str++;
+
+    if (*str) {
+        *str = '\0';
+        *saveptr = str + 1;
+    } else {
+        *saveptr = NULL;
+    }
+
+    return token_start;
+}
+
+
 // Other
 
 size_t strlen(const char *s)

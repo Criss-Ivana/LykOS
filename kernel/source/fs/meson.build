@@ -1,4 +1,5 @@
 c_files += files(
-    'vfs.c',
     'ramfs.c',
+    'ustar.c',
+    'vfs.c',
 )

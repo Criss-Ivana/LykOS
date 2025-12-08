@@ -20,6 +20,8 @@ char *strrchr(const char *s, int c);
 
 char *strstr(const char *s1, const char *s2);
 
+char *strtok_r(char *str, const char *delim, char **saveptr);
+
 // Comparison
 
 int strcmp(const char *s1, const char *s2);
