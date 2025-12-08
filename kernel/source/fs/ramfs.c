@@ -20,18 +20,20 @@ typedef struct
 }
 ramfs_page_t;
 
-typedef struct
+typedef struct ramfs_node ramfs_node_t;
+
+struct ramfs_node
 {
     vnode_t vn;
 
+    ramfs_node_t *parent;
     list_t children;
     ramfs_page_t *pages;
     size_t page_count;
     size_t page_capacity;
 
     list_node_t list_node;
-}
-ramfs_node_t;
+};
 
 // VFS API
 
@@ -143,6 +145,17 @@ static int write(vnode_t *self, const void *buffer, uint64_t count, uint64_t off
 static int lookup(vnode_t *self, const char *name, vnode_t **out)
 {
     ramfs_node_t *current = (ramfs_node_t *)self;
+
+    if (strcmp(name, ".") == 0)
+    {
+        *out = self;
+        return EOK;
+    }
+    if (strcmp(name, "..") == 0)
+    {
+        *out = current->parent ? &current->parent->vn : self;
+        return EOK;
+    }
     FOREACH(n, current->children)
     {
         ramfs_node_t *child = LIST_GET_CONTAINER(n, ramfs_node_t, list_node);
@@ -175,6 +188,7 @@ static int create(vnode_t *self, const char *name, vnode_type_t t, vnode_t **out
             .inode = child,
             .ref_count = 1
         },
+        .parent = current,
         .children = LIST_INIT,
         .pages = heap_alloc(sizeof(ramfs_page_t) * INITIAL_PAGE_CAPACITY),
         .page_count = 0,
@@ -205,6 +219,7 @@ vfs_t *ramfs_create()
             .inode = &ramfs_root,
             .ref_count = 1
         },
+        .parent = ramfs_root,
         .children = LIST_INIT,
         .pages = heap_alloc(sizeof(ramfs_page_t) * INITIAL_PAGE_CAPACITY),
         .page_count = 0,

@@ -33,36 +33,22 @@ static trie_node_t *find_child(trie_node_t *parent, const char *comp, size_t len
     return NULL;
 }
 
-// This function could be needed in the future.
+static const char *next_component(const char *path, size_t *out_len)
+{
+    while (*path == '/')
+        path++;
 
-// static void consume_path(char *path, int *comp_len, char **path_left)
-// {
-//     char *start;
-//     char *end;
+    if (!*path)
+        return NULL;
 
-//     while (*path == '/')
-//         path++;
+    const char *start = path;
+    const char *end = start;
+    while (*end && *end != '/')
+        end++;
 
-//     if (*path == '\0')
-//     {
-//         *comp_len = 0;
-//         *path_left = NULL;
-//         return;
-//     }
-
-//     start = path;
-//     end = start;
-//     while (*end && *end != '/')
-//         end++;
-
-//     *comp_len = end - start;
-//     while (*end == '/')
-//         end++;
-//     if(*end == '\0')
-//         *path_left = NULL;
-//     else
-//         *path_left = end;
-// }
+    *out_len = end - start;
+    return start;
+}
 
 static char *vfs_get_mountpoint(const char *path, vnode_t **out)
 {
@@ -118,25 +104,19 @@ int vfs_lookup(const char *path, int flags, vnode_t **out)
 
     vnode_t *curr;
     path = vfs_get_mountpoint(path, &curr);
+    const char *comp;
+    size_t comp_len;
 
-    while (curr && *path)
+    while (curr && (comp = next_component(path, &comp_len)))
     {
-        while(*path == '/')
-            path++;
+        char name_buf[VFS_MAX_NAME_LEN + 1];
+        memcpy(name_buf, comp, comp_len);
+        name_buf[comp_len] = '\0';
 
-        if (!*path)
-            break;
-
-        char *slash = strchr(path, '/');
-
-        size_t len = slash ? (size_t)(slash - path) : strlen(path);
-        char comp[VFS_MAX_NAME_LEN + 1];
-        memcpy(comp, path, len);
-        comp[len] = '\0';
-        if (curr->ops->lookup(curr, comp, &curr) != EOK)
+        if (curr->ops->lookup(curr, name_buf, &curr) != EOK)
             return ENOENT;
 
-        path += len;
+        path = comp + comp_len;
     }
 
     *out = curr;
