@@ -3,14 +3,15 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "mm/mm.h"
+#include "log.h"
 #include "mm/heap.h"
+#include "mm/mm.h"
 
-#include "utils/string.h"
 #include "utils/printf.h"
+#include "utils/string.h"
 
-#include "fs/vfs.h"
 #include "fs/ramfs.h"
+#include "fs/vfs.h"
 
 #define USTAR_BLOCK_SIZE 512
 
@@ -117,8 +118,10 @@ int ustar_extract(const void *archive, uint64_t archive_size, vnode_t *dest_vn)
 
         // build full path
         char full_path[256];
-        if (header->prefix[0] != '\0') snprintf(full_path, sizeof(full_path), "%s/%s", header->prefix, header->name);
-        else strncpy(full_path, header->name, sizeof(full_path) -1);
+        if (header->prefix[0] != '\0')
+            snprintf(full_path, sizeof(full_path), "%s%s", header->prefix, header->name);
+        else
+            strncpy(full_path, header->name, sizeof(full_path) - 1);
 
         switch (header->typeflag)
         {
@@ -134,7 +137,8 @@ int ustar_extract(const void *archive, uint64_t archive_size, vnode_t *dest_vn)
                 if(file_vn && file_size > 0)
                 {
                     uint64_t written;
-                    vfs_write(file_vn, (void *)(data+offset), file_size, 0, &written);
+                    if (vfs_write(file_vn, (void *)(data+offset), file_size, 0, &written) != EOK)
+                        log(LOG_FATAL, "USTAR: failed to write to created file");
                 }
                 break;
             }
@@ -144,9 +148,10 @@ int ustar_extract(const void *archive, uint64_t archive_size, vnode_t *dest_vn)
 
         }
 
-        uint64_t blocks = (file_size+USTAR_BLOCK_SIZE-1) / USTAR_BLOCK_SIZE;
+        uint64_t blocks = (file_size + USTAR_BLOCK_SIZE - 1) / USTAR_BLOCK_SIZE;
         offset += blocks * USTAR_BLOCK_SIZE;
     }
 
+    log(LOG_INFO, "USTAR: loaded archive into filesystem");
     return EOK;
 }

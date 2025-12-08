@@ -1,5 +1,5 @@
 c_files += files(
-    'initrd.c',
     'ramfs.c',
+    'ustar.c',
     'vfs.c',
 )

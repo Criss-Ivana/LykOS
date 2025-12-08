@@ -3,6 +3,8 @@
 #include "fs/ramfs.h"
 #include "log.h"
 #include "mm/heap.h"
+#include "mm/mm.h"
+#include "uapi/errno.h"
 #include "utils/list.h"
 #include "utils/string.h"
 
@@ -122,14 +124,19 @@ int vfs_lookup(const char *path, int flags, vnode_t **out)
         while(*path == '/')
             path++;
 
-        char *slash = strchr(path, '/');
-        if (slash)
-            *slash = '\0';
-        curr->ops->lookup(curr, path, &curr);
-        if (slash)
-            *slash = '/';
+        if (!*path)
+            break;
 
-        path += strlen(curr->name);
+        char *slash = strchr(path, '/');
+
+        size_t len = slash ? (size_t)(slash - path) : strlen(path);
+        char comp[VFS_MAX_NAME_LEN + 1];
+        memcpy(comp, path, len);
+        comp[len] = '\0';
+        if (curr->ops->lookup(curr, comp, &curr) != EOK)
+            return ENOENT;
+
+        path += len;
     }
 
     *out = curr;

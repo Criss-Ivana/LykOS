@@ -79,9 +79,9 @@ struct vnode_ops
  * Veneer layer.
 */
 
-int vfs_read(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_read);
-int vfs_write(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_written);
-int vfs_lookup(const char *path, int flags, vnode_t **out);
-int vfs_create(vnode_t *vn, const char *name, vnode_type_t type, vnode_t **out_vn);
+[[nodiscard]] int vfs_read(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_read);
+[[nodiscard]] int vfs_write(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_written);
+[[nodiscard]] int vfs_lookup(const char *path, int flags, vnode_t **out);
+[[nodiscard]] int vfs_create(vnode_t *vn, const char *name, vnode_type_t type, vnode_t **out_vn);
 
 void vfs_init();
