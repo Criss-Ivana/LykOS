@@ -1,5 +1,6 @@
 #include "fs/ramfs.h"
 
+#include "arch/clock.h"
 #include "arch/types.h"
 #include "hhdm.h"
 #include "log.h"
@@ -87,6 +88,8 @@ static int read(vnode_t *self, void *buffer, uint64_t count, uint64_t offset, ui
             break;
     }
 
+    node->vn.atime = arch_clock_get_unix_time();
+
     *out = copied;
     return EOK;
 }
@@ -138,6 +141,8 @@ static int write(vnode_t *self, const void *buffer, uint64_t count, uint64_t off
     if (offset + copied > node->vn.size)
         node->vn.size = offset + copied;
 
+    node->vn.mtime = arch_clock_get_unix_time();
+
     *out = copied;
     return EOK;
 }
@@ -172,17 +177,18 @@ static int lookup(vnode_t *self, const char *name, vnode_t **out)
 
 static int create(vnode_t *self, const char *name, vnode_type_t t, vnode_t **out)
 {
+    uint64_t now = arch_clock_get_unix_time();
+
     ramfs_node_t *current = (ramfs_node_t *)self;
     ramfs_node_t *child = heap_alloc(sizeof(ramfs_node_t));
-
     *child = (ramfs_node_t) {
         .vn = (vnode_t) {
             .name = strdup(name),
             .type = t,
             .perm = 0,
-            .ctime = 0,
-            .mtime = 0,
-            .atime = 0,
+            .ctime = now,
+            .mtime = now,
+            .atime = now,
             .size = 0,
             .ops  = &ramfs_node_ops,
             .inode = child,
@@ -206,14 +212,16 @@ static int create(vnode_t *self, const char *name, vnode_type_t t, vnode_t **out
 
 vfs_t *ramfs_create()
 {
+    uint64_t now = arch_clock_get_unix_time();
+    
     ramfs_node_t *ramfs_root = heap_alloc(sizeof(ramfs_node_t));
     *ramfs_root = (ramfs_node_t) {
         .vn = {
             .name = strdup("/"),
             .type = VDIR,
-            .ctime = 0, // TODO: modify
-            .mtime = 0, // TODO: modify
-            .atime = 0, // TODO: modify
+            .ctime = now,
+            .mtime = now,
+            .atime = now,
             .size = 0,
             .ops  = &ramfs_node_ops,
             .inode = &ramfs_root,
