@@ -78,7 +78,6 @@ void arch_clock_get_snapshot(arch_clock_snapshot_t *out)
 
         a = b;
     }
-
     *out = b;
 
     // Convert from BCD if needed.
@@ -89,6 +88,22 @@ void arch_clock_get_snapshot(arch_clock_snapshot_t *out)
         out->hour  = bcd_to_bin(out->hour & 0x7F);
         out->day   = bcd_to_bin(out->day);
         out->month = bcd_to_bin(out->month);
-        out->year  = bcd_to_bin(out->year);
+        out->year  = bcd_to_bin(out->year) + 2000;
     }
+}
+
+uint64_t arch_clock_get_unix_time()
+{
+    arch_clock_snapshot_t now;
+    arch_clock_get_snapshot(&now);
+
+    now.year -= now.month <= 2;
+    const int64_t era = (now.year >= 0 ? now.year : now.year-399) / 400;
+    const unsigned yoe = (unsigned)(now.year - era * 400);
+    const unsigned doy = (153*(now.month + (now.month > 2 ? -3 : 9)) + 2)/5 + now.day - 1;
+    const unsigned doe = yoe * 365 + yoe/4 - yoe/100 + doy;
+    int64_t days = era * 146097 + (int64_t)doe - 719468;
+    int64_t sod  = now.hour * 3600 + now.min * 60 + now.sec;
+
+    return (uint64_t)(days * 86400 + sod);
 }
