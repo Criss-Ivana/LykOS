@@ -10,7 +10,6 @@ typedef struct
     uint8_t day;
     uint8_t month;
     uint16_t year;
-    uint64_t epoch;
 }
 arch_clock_snapshot_t;
 
