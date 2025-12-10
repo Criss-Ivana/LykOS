@@ -7,11 +7,11 @@
 #include "mm/pm.h"
 #include "mm/vm.h"
 #include "mod/ksym.h"
+#include "mod/module.h"
 #include "proc/smp.h"
 #include "utils/string.h"
 #include <stddef.h>
 #include <stdint.h>
-#include "include/arch/clock.h"
 
 void kernel_main()
 {
@@ -42,6 +42,16 @@ void kernel_main()
     // Load kernel modules
 
     ksym_init();
+
+    vnode_t *test_module_file;
+    if (vfs_lookup("/boot/modules/test_module.o", 0, &test_module_file) == EOK && test_module_file->type == VREG)
+    {
+        module_t *mod;
+        module_load(test_module_file, &mod);
+        mod->install();
+    }
+
+    // Start other CPU cores and scheduler
 
     smp_init();
 

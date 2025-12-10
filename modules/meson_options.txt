@@ -1,0 +1,21 @@
+option(
+    'arch',
+    type: 'combo',
+    choices: ['x86_64', 'aarch64'],
+    value: 'x86_64',
+    description: 'Target architecture.',
+)
+
+option(
+    'enabled_modules',
+    type: 'array',
+    value: ['test_module'],
+    description: 'Specify which kernel modules to build.',
+)
+
+option(
+    'kernel_include_dir',
+    type: 'string',
+    value: '',
+    description: 'Path to kernel headers'
+)

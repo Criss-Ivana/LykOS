@@ -1,0 +1,15 @@
+cc = meson.get_compiler('c')
+
+module = custom_target(
+    'test_module',
+    input: ['main.c'],
+    output: ['test_module.o'],
+    command: [
+        cc.cmd_array(),
+        c_flags,
+        '-c', '@INPUT@',
+        '-o', '@OUTPUT@',
+    ],
+    install: true,
+    install_dir: 'bin',
+)

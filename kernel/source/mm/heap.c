@@ -3,12 +3,15 @@
 #include "log.h"
 #include "mm/kmem.h"
 #include "mm/mm.h"
-#include "utils/printf.h"
-#include "utils/string.h"
 
-static kmem_cache_t g_caches[8];
-static const size_t g_cache_sizes[] = {8, 16, 32, 64, 128, 256, 512, 1024};
-static const char *g_cache_names[] = {"heap-8", "heap-16", "heap-32", "heap-64", "heap-128", "heap-256", "heap-512", "heap-1024"};
+static kmem_cache_t g_caches[9];
+static const size_t g_cache_sizes[] = {
+    8, 16, 32, 64, 128, 256, 512, 1024, 2048
+};
+static const char *g_cache_names[] = {
+    "heap-8", "heap-16", "heap-32", "heap-64", "heap-128",
+    "heap-256", "heap-512", "heap-1024", "heap-2048"
+};
 
 void *heap_alloc(size_t size)
 {
@@ -56,7 +59,7 @@ void *heap_realloc(void *obj, size_t old_size, size_t new_size)
 
 void heap_init()
 {
-    for (int i = 0; i < 8; i++)
+    for (size_t i = 0; i < sizeof(g_caches) / sizeof(kmem_cache_t); i++)
         kmem_cache_intialize(&g_caches[i], g_cache_names[i], g_cache_sizes[i]);
 
     log(LOG_DEBUG, "Heap initialized.");

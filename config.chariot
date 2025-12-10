@@ -16,6 +16,11 @@ source/limine {
     revision: "v10.x-binary"
 }
 
+source/modules {
+    url: "modules"
+    type: "local"
+}
+
 source/support {
     url: "support"
     type: "local"
@@ -43,16 +48,42 @@ tool/ksym {
     </sh>
 }
 
-custom/kernel {
+package/modules {
     dependencies: [
-        image/meson image/nasm image/clang image/llvm image/lld
-        source/kernel
+        image/meson image/nasm image/lld image/clang image/llvm image/gcc
+        source/kernel source/modules source/support
     ]
     options: [ "arch" ]
     configure: <sh>
         meson setup \
             --buildtype=release \
-            --cross-file=$SOURCES_DIR/kernel/cross-files/$OPTION_arch.ini \
+            --cross-file=$SOURCES_DIR/support/cross-files/kernel-$OPTION_arch.ini \
+            --prefix=$PREFIX \
+            -Darch=$OPTION_arch \
+            -Denabled_modules=test_module \
+            -Dkernel_include_dir=$SOURCES_DIR/kernel/include \
+            $SOURCES_DIR/modules
+    </sh>
+    build: <sh>
+        ninja -j$PARALLELISM
+    </sh>
+    install: <sh>
+        DESTDIR=$INSTALL_DIR ninja install
+        install -d $INSTALL_DIR/boot/modules
+        install $INSTALL_DIR/usr/bin/* $INSTALL_DIR/boot/modules
+    </sh>
+}
+
+custom/kernel {
+    dependencies: [
+        image/meson image/nasm image/clang image/llvm image/lld
+        source/kernel source/support
+    ]
+    options: [ "arch" ]
+    configure: <sh>
+        meson setup \
+            --buildtype=release \
+            --cross-file=$SOURCES_DIR/support/cross-files/kernel-$OPTION_arch.ini \
             --prefix=$PREFIX \
             -Darch=$OPTION_arch \
             $SOURCES_DIR/kernel
@@ -67,10 +98,12 @@ custom/kernel {
 
 custom/initrd {
     dependencies: [
+        package/modules
         source/initrd
     ]
     build: <sh>
         cp -r $SOURCES_DIR/initrd .
+        cp -r $SYSROOT_DIR/* initrd
         cd initrd
         tar -cvf ../initrd.tar --format=ustar *
     </sh>

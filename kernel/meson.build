@@ -27,6 +27,8 @@ c_flags = [
     '-ffreestanding',
     '-fno-stack-protector',
     '-fno-stack-check',
+    '-fno-pic',
+    '-fno-pie',
     # Optimization
     '-flto',
     '-ffat-lto-objects',
@@ -70,11 +72,12 @@ elif arch == 'aarch64'
     c_flags += [
         '-target', 'aarch64-unknown-none',
         '-mgeneral-regs-only',
-
     ]
     ld_flags += [
         '-m', 'aarch64elf',
     ]
+else
+    error('Unsupported architecture: ' + arch)
 endif
 
 c_files = []
