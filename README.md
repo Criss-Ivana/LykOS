@@ -8,9 +8,9 @@ This is the main repository of LykOS, an open source hobbyist operating system t
 - x86_64 & aarch64 support
 - Multithreading & SMP
 - Buddy allocator, slab allocator, & virtual memory
+- Dynamic kernel module loading (drivers included)
 
 ## Roadmap
-- Kernel module system
 - POSIX compatibility
 - File system & disk drivers
 - Network stack
