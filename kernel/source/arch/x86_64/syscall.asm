@@ -1,4 +1,4 @@
-global arch_syscall_entry
+global x86_64_arch_syscall_entry
 
 %define KERNEL_STACK_OFFSET 32
 %define SYSCALL_STACK_OFFSET 40
@@ -7,7 +7,7 @@ extern syscall_table
 extern syscall_table_length
 
 section .text
-arch_syscall_entry:
+x86_64_arch_syscall_entry:
     swapgs
     mov qword [gs:SYSCALL_STACK_OFFSET], rsp
     mov rsp, qword [gs:KERNEL_STACK_OFFSET]
@@ -60,6 +60,6 @@ arch_syscall_entry:
     pop rcx
     pop rbx
 
-    mov rsp, qword [gs:USER_STACK_OFFSET]
+    mov rsp, qword [gs:SYSCALL_STACK_OFFSET]
     swapgs
     o64 sysret

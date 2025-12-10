@@ -33,12 +33,12 @@ extern void x86_64_thread_userspace_init();
 
 extern __attribute__((naked)) void __thread_context_switch(arch_thread_context_t *new, arch_thread_context_t *old);
 
-void arch_thread_context_init(arch_thread_context_t *context, vm_addrspace_t *as, bool user, uintptr_t entry)
+void arch_thread_context_init(arch_thread_context_t *context, vm_addrspace_t *as, bool is_kernel, uintptr_t entry)
 {
     context->self = context;
     context->fs = context->gs = 0;
 
-    if (!user)
+    if (is_kernel)
     {
         context->kernel_stack = pm_alloc(0) + HHDM + ARCH_PAGE_GRAN;
         context->rsp = context->kernel_stack - sizeof(thread_init_stack_kernel_t);

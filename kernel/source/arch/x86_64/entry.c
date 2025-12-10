@@ -1,8 +1,9 @@
 #include "arch/lcpu.h"
-#include "dev/acpi.h"
-#include "gfx/simplefb.h"
+#include "arch/x86_64/syscall.h"
 #include "arch/x86_64/tables/gdt.h"
 #include "arch/x86_64/tables/idt.h"
+#include "dev/acpi.h"
+#include "gfx/simplefb.h"
 #include "log.h"
 #include "proc/smp.h"
 #include "proc/thread.h"
@@ -31,6 +32,8 @@ void __entry()
     idt_load();
 
     acpi_init();
+
+    x86_64_syscall_init();
 
     arch_lcpu_thread_reg_write((size_t)&early_thread.context);
 

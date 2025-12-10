@@ -1,5 +1,6 @@
 #pragma once
 
+#include "mm/vm.h"
 #include "utils/list.h"
 #include "sync/spinlock.h"
 
@@ -17,6 +18,7 @@ typedef struct proc
     bool kernel;
 
     proc_status_t status;
+    vm_addrspace_t *as;
     list_t threads;
 
     list_node_t proc_list_node;
@@ -25,4 +27,4 @@ typedef struct proc
 }
 proc_t;
 
-proc_t *proc_create(const char *name);
+proc_t *proc_create(const char *name, bool is_kernel);

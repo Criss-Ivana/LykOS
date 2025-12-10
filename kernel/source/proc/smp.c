@@ -28,7 +28,7 @@ void smp_init()
     if (bootreq_mp.response == NULL)
         log(LOG_FATAL, "Invalid SMP info provided by the bootloader");
 
-    idle_proc = proc_create("System Idle Process");
+    idle_proc = proc_create("System Idle Process", true);
 
     for (size_t i = 0; i < bootreq_mp.response->cpu_count; i++)
     {
@@ -63,7 +63,7 @@ void smp_init()
             continue;
         }
 
-        __atomic_store_n(&mp_info->goto_address, (limine_goto_address)&thread_idle_func, __ATOMIC_SEQ_CST);
+        // __atomic_store_n(&mp_info->goto_address, (limine_goto_address)&thread_idle_func, __ATOMIC_SEQ_CST);
     }
 
     // Also initialize the bootstrap processor.

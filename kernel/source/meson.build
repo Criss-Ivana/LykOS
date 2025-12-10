@@ -6,6 +6,7 @@ subdir('mm')
 subdir('mod')
 subdir('proc')
 subdir('sync')
+subdir('sys')
 subdir('utils')
 
 c_files += files(

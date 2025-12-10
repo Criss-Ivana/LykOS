@@ -1,6 +1,7 @@
 #include "arch/lcpu.h"
 
 #include "arch/x86_64/msr.h"
+#include "arch/x86_64/syscall.h"
 #include "arch/x86_64/tables/gdt.h"
 #include "arch/x86_64/tables/idt.h"
 
@@ -49,4 +50,5 @@ void arch_lcpu_init()
 {
     gdt_load();
     idt_load();
+    x86_64_syscall_init();
 }
