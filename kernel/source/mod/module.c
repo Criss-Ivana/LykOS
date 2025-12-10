@@ -90,13 +90,11 @@ int module_load(vnode_t *file, module_t **out)
                 0,
                 &mem
             );
-            log(LOG_FATAL, "hmm %p", mem);
             if (vfs_read(file, (void *)mem, section->sh_size, section->sh_offset, &count) != EOK || count != section->sh_size)
             {
                 log(LOG_ERROR, "Could not load section header from file!");
                 return ENOEXEC;
             }
-
             section_addr[i] = mem;
         }
         else if (section->sh_type == SHT_NOBITS) // Global data.
@@ -165,7 +163,6 @@ int module_load(vnode_t *file, module_t **out)
                 log(LOG_ERROR, "Symbol `%s` could not be resolved!", name);
                 return ENOEXEC;
             }
-            log(LOG_DEBUG, "hmm resolved %s %p", name, sym->st_value);
             break;
         case SHN_ABS:
             break;
@@ -240,8 +237,6 @@ int module_load(vnode_t *file, module_t **out)
 
     *out = heap_alloc(sizeof(module_t));
     **out = module;
-
-    log(LOG_DEBUG, "%p", log);
 
     log(LOG_INFO, "Kernel module loaded successfully.");
     return EOK;
