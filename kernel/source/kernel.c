@@ -11,6 +11,7 @@
 #include "utils/string.h"
 #include <stddef.h>
 #include <stdint.h>
+#include "include/arch/clock.h"
 
 void kernel_main()
 {

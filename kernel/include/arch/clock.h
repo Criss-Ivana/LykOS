@@ -9,9 +9,10 @@ typedef struct
     uint8_t hour;
     uint8_t day;
     uint8_t month;
-    uint8_t year;
-    uint64_t epoch;
+    uint16_t year;
 }
 arch_clock_snapshot_t;
 
 void arch_clock_get_snapshot(arch_clock_snapshot_t *out);
+
+uint64_t arch_clock_get_unix_time();
