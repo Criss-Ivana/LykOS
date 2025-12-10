@@ -38,10 +38,10 @@ typedef struct
 {
     list_t segments;
     arch_paging_map_t *page_map;
-    spinlock_t slock;
-
     uintptr_t limit_low;
     uintptr_t limit_high;
+
+    spinlock_t slock;
 }
 vm_addrspace_t;
 

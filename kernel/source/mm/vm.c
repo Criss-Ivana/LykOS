@@ -16,7 +16,7 @@ vm_addrspace_t *vm_kernel_as;
 
 // Helpers
 
-static bool vmm_check_collision(vm_addrspace_t *as, uintptr_t base, size_t length)
+static bool check_collision(vm_addrspace_t *as, uintptr_t base, size_t length)
 {
     uintptr_t end = base + length - 1;
 
@@ -33,7 +33,7 @@ static bool vmm_check_collision(vm_addrspace_t *as, uintptr_t base, size_t lengt
     return false;
 }
 
-static bool vmm_find_space(vm_addrspace_t *as, size_t length, uintptr_t *out)
+static bool find_space(vm_addrspace_t *as, size_t length, uintptr_t *out)
 {
     if (list_is_empty(&as->segments))
     {
@@ -62,6 +62,25 @@ static bool vmm_find_space(vm_addrspace_t *as, size_t length, uintptr_t *out)
     return false;
 }
 
+static void insert_seg(vm_addrspace_t *as, vm_segment_t *seg)
+{
+    list_node_t *pos = NULL;
+    FOREACH(n, as->segments)
+    {
+        vm_segment_t *i = LIST_GET_CONTAINER(n, vm_segment_t, list_node);
+
+        if (i->start < seg->start)
+            pos = n;
+        else
+            break; // Given that the list is sorted, an earlier position must have been found.
+    }
+
+    if (pos)
+        list_insert_after(&as->segments, pos, &seg->list_node);
+    else
+        list_prepend(&as->segments, &seg->list_node);
+}
+
 // Mapping and unmapping
 
 int vm_map_direct(vm_addrspace_t *as, uintptr_t vaddr, size_t length,
@@ -69,6 +88,8 @@ int vm_map_direct(vm_addrspace_t *as, uintptr_t vaddr, size_t length,
                   uintptr_t offset,
                   uintptr_t *out)
 {
+    (void)flags;
+
     spinlock_acquire(&as->slock);
 
     vm_segment_t *seg = heap_alloc(sizeof(vm_segment_t));
@@ -77,7 +98,7 @@ int vm_map_direct(vm_addrspace_t *as, uintptr_t vaddr, size_t length,
         .length = length,
         .offset = offset
     };
-    list_append(&as->segments, &seg->list_node);
+    insert_seg(as, seg);
 
     for (size_t i = 0; i < length; i += ARCH_PAGE_GRAN)
         arch_paging_map_page(as->page_map, vaddr + i, offset + i, ARCH_PAGE_GRAN, prot);
@@ -97,12 +118,19 @@ int vm_map_vnode(vm_addrspace_t *as, uintptr_t vaddr, size_t length,
 
     spinlock_acquire(&as->slock);
 
-    if (vmm_check_collision(as, vaddr, length))
+    if (vaddr < as->limit_low || vaddr + length > as->limit_high)
+    {
+        if (flags & VM_MAP_FIXED || flags & VM_MAP_FIXED_NOREPLACE)
+            return EINVAL;
+        if (!find_space(as, length, &vaddr))
+            return ENOMEM;
+    }
+    if (check_collision(as, vaddr, length))
     {
         if (flags & VM_MAP_FIXED_NOREPLACE)
             return EEXIST;
         else if (!(flags & VM_MAP_FIXED))
-            if (!vmm_find_space(as, length, &vaddr))
+            if (!find_space(as, length, &vaddr))
                 return ENOMEM;
     }
 
@@ -112,7 +140,7 @@ int vm_map_vnode(vm_addrspace_t *as, uintptr_t vaddr, size_t length,
         .length = length,
         .offset = offset
     };
-    list_append(&as->segments, &seg->list_node);
+    insert_seg(as, seg);
 
     for (size_t i = 0; i < length; i += ARCH_PAGE_GRAN)
     {
@@ -156,6 +184,8 @@ vm_addrspace_t *vm_map_create()
     *map = (vm_addrspace_t) {
         .segments = LIST_INIT,
         .page_map = arch_paging_map_create(),
+        .limit_low = 0,
+        .limit_high = HHDM,
         .slock = SPINLOCK_INIT
     };
 
@@ -191,6 +221,8 @@ void vm_init()
     arch_paging_init();
 
     vm_kernel_as = vm_map_create();
+    vm_kernel_as->limit_low = HHDM;
+    vm_kernel_as->limit_high = ARCH_KERNEL_MAX_VIRT;
 
     uintptr_t out;
 
