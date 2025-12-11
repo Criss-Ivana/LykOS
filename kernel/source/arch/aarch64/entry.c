@@ -1,8 +1,14 @@
 #include "arch/lcpu.h"
+#include "dev/acpi/acpi.h"
 #include "gfx/simplefb.h"
 #include "log.h"
+#include "mm/heap.h"
+#include "mm/pm.h"
+#include "mm/vm.h"
 #include "proc/smp.h"
 #include "proc/thread.h"
+
+#include "arch/aarch64/gic.h"
 
 [[noreturn]] extern void kernel_main();
 
@@ -17,10 +23,24 @@ static thread_t early_thread = (thread_t) {
 
 void __entry()
 {
+    // Load pseudo-thread
+    arch_lcpu_thread_reg_write((size_t)&early_thread.context);
+
     simplefb_init();
     log(LOG_INFO, "Kernel compiled on %s at %s.", __DATE__, __TIME__);
 
-    arch_lcpu_thread_reg_write((size_t)&early_thread.context);
+    // Exception table
+
+    // Memory
+    pm_init();
+    heap_init();
+    vm_init();
+
+    // ACPI
+    acpi_init();
+
+    // GIC
+    aarch64_gic_init();
 
     kernel_main();
 }

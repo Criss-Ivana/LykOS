@@ -1,4 +1,4 @@
-#include "dev/acpi.h"
+#include "dev/acpi/acpi.h"
 
 #include "bootreq.h"
 #include "hhdm.h"
