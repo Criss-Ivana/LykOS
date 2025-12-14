@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 
-ARCH="${1:-x86_64}"      # Fallback to x86_64 if no arch is provided.
+ARCH="${1:-x86_64}" # Fallback to x86_64 if no arch is provided.
 LYKOS_ISO=".chariot-cache/recipes/custom/image/opt/arch/${ARCH}/install/lykos.iso"
-OVMF="qemu/ovmf-${ARCH}"
+OVMF="qemu/edk2-ovmf/ovmf-code-${ARCH}.fd"
 
 QEMU_FLAGS=(
     -m 2G
@@ -20,15 +20,9 @@ QEMU_FLAGS=(
 
 # Fetch OVMF if missing
 if [ ! -f "$OVMF" ]; then
-    mkdir -p "$(dirname "$OVMF")"
-    if [ "$ARCH" = "x86_64" ]; then
-        curl -Lo "$OVMF" https://retrage.github.io/edk2-nightly/bin/RELEASEX64_OVMF.fd
-    elif [ "$ARCH" = "aarch64" ]; then
-        curl -Lo "$OVMF" https://retrage.github.io/edk2-nightly/bin/RELEASEAARCH64_QEMU_EFI.fd
-    else
-        echo "Unsupported ARCH: $ARCH"
-        exit 1
-    fi
+    mkdir -p qemu
+    curl -Lo qemu/edk2-ovmf.tar.gz https://github.com/osdev0/edk2-ovmf-nightly/releases/download/nightly-20251210T012647Z/edk2-ovmf.tar.gz
+    tar -xzf qemu/edk2-ovmf.tar.gz -C qemu
 fi
 
 # Run QEMU
