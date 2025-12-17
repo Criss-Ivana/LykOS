@@ -4,6 +4,7 @@
 #include "dev/acpi/tables/madt.h"
 #include "hhdm.h"
 #include "log.h"
+#include "panic.h"
 #include "sync/spinlock.h"
 
 #define IOREGSEL  0x00
@@ -86,7 +87,7 @@ void x86_64_ioapic_init()
 {
     acpi_madt_t *madt = (acpi_madt_t *)acpi_lookup("APIC");
     if (!madt)
-        log(LOG_FATAL, "MADT not found!");
+        panic("MADT not found!");
 
     uint8_t *ptr = (uint8_t *)madt + sizeof(acpi_madt_t);
     uint8_t *end = (uint8_t *)madt + madt->sdt.length;
@@ -114,7 +115,7 @@ void x86_64_ioapic_init()
     if (ioapic_base)
         log(LOG_INFO, "IOAPIC initialized.");
     else
-        log(LOG_FATAL, "IOAPIC interrupt controller structure not found!");
+        panic("IOAPIC interrupt controller structure not found!");
 }
 
 void x86_64_ioapic_map_gsi(uint8_t gsi, uint8_t lapic_id, bool low_polarity, bool trigger_mode, uint8_t vector)
@@ -170,7 +171,7 @@ void x86_64_ioapic_map_legacy_irq(uint8_t irq, uint8_t lapic_id, bool fallback_l
     if (arch_irq_reserve_global(irq))
         x86_64_ioapic_map_gsi(irq, lapic_id, fallback_low_polarity, fallback_trigger_mode, vector);
     else
-        log(LOG_FATAL,"Could not reserve global irq %d for legacy mapping!", irq);
+        panic("Could not reserve global irq %d for legacy mapping!", irq);
 }
 
 // irq.h API
@@ -229,7 +230,7 @@ bool arch_irq_route(size_t global_irq, size_t target_cpu, size_t local_irq)
     bool polarity = false;
     bool trigger  = false;
 
-    x86_64_ioapic_map_legacy_irq(
+    x86_64_ioapic_map_gsi(
         (uint8_t)global_irq,
         (uint8_t)target_cpu,
         polarity,

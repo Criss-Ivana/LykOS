@@ -4,6 +4,7 @@
 #include "bootreq.h"
 #include "log.h"
 #include "mm/heap.h"
+#include "panic.h"
 #include "proc/proc.h"
 #include "proc/sched.h"
 #include "proc/thread.h"
@@ -26,7 +27,7 @@ static proc_t *idle_proc;
 void smp_init()
 {
     if (bootreq_mp.response == NULL)
-        log(LOG_FATAL, "Invalid SMP info provided by the bootloader");
+        panic("Invalid SMP info provided by the bootloader!");
 
     idle_proc = proc_create("System Idle Process");
 

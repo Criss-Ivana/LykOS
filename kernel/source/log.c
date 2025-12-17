@@ -7,14 +7,12 @@
 
 static spinlock_t slock = SPINLOCK_INIT;
 
-void log(log_level_t level, const char *format, ...)
+void vlog(log_level_t level, const char *format, va_list vargs)
 {
-    char buf[256];
+    (void)level;
 
-    va_list vargs;
-    va_start(vargs);
+    char buf[256];
     vsnprintf(buf, 256, format, vargs);
-    va_end(vargs);
 
     spinlock_acquire(&slock);
 
@@ -24,4 +22,14 @@ void log(log_level_t level, const char *format, ...)
     console_write(buf);
 
     spinlock_release(&slock);
+}
+
+void log(log_level_t level, const char *format, ...)
+{
+    va_list vargs;
+    va_start(vargs);
+
+    vlog(level, format, vargs);
+
+    va_end(vargs);
 }

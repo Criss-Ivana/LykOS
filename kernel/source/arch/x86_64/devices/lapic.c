@@ -5,6 +5,7 @@
 #include "arch/x86_64/msr.h"
 #include "hhdm.h"
 #include "log.h"
+#include "panic.h"
 
 #include <stddef.h>
 
@@ -76,7 +77,7 @@ void x86_64_lapic_ipi(uint32_t lapic_id, uint32_t vec)
 void x86_64_lapic_init()
 {
     if (!arch_irq_reserve_local(IRQ))
-        log(LOG_FATAL, "Could not reserve IRQ %d for LAPIC!", IRQ);
+        panic("Could not reserve IRQ %d for LAPIC!", IRQ);
     g_lapic_base = (x86_64_msr_read(X86_64_MSR_APIC_BASE) & 0xFFFFFFFFFF000) + HHDM;
     lapic_write(REG_SPURIOUS, (1 << 8) | 0xFF);
 

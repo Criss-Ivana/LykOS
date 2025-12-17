@@ -2,6 +2,7 @@
 
 #include "bootreq.h"
 #include "log.h"
+#include "panic.h"
 #include "utils/string.h"
 #include <stdint.h>
 
@@ -42,5 +43,5 @@ void ksym_init()
             return;
         }
 
-    log(LOG_FATAL, "KSYM: bootloader module for kernel symbols not found.");
+    panic("Bootloader module for kernel symbols not found.");
 }
