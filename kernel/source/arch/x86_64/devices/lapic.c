@@ -47,7 +47,7 @@ void arch_timer_stop()
     lapic_write(REG_TIMER_INITIAL_COUNT, 0);
 }
 
-void arch_timer_oneshoot(size_t us)
+void arch_timer_oneshot(size_t us)
 {
     lapic_write(REG_TIMER_LVT, MASK);
     lapic_write(REG_TIMER_LVT, ONE_SHOOT | (32 + IRQ));

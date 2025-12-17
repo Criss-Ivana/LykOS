@@ -116,7 +116,6 @@ custom_target(
         meson.get_external_property('ld'),
         ld_flags,
         '--whole-archive', '@INPUT@',
-        '--whole-archive',
         '-o', '@OUTPUT@',
     ],
     install: true,

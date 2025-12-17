@@ -14,7 +14,7 @@ void arch_timer_stop();
  *
  * @param us Timeout in microseconds before the interrupt fires.
  */
-void arch_timer_oneshoot(size_t us);
+void arch_timer_oneshot(size_t us);
 
 /**
  * @brief Program a one-shot timer for the current CPU.
