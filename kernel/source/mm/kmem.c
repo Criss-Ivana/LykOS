@@ -61,28 +61,6 @@ static kmem_magazine_t *cache_make_magazine(kmem_cache_t *cache, bool populate)
     return mag;
 }
 
-void kmem_cache_intialize(kmem_cache_t *cache, const char *name, size_t size)
-{
-    *cache = (kmem_cache_t) {
-        .name = name,
-        .object_size = size,
-        .slabs_full = LIST_INIT,
-        .slabs_partial = LIST_INIT,
-        .slabs_lock = SPINLOCK_INIT,
-        .magazines_full = LIST_INIT,
-        .magazines_empty = LIST_INIT,
-        .magazines_lock = SPINLOCK_INIT
-    };
-
-    for (int i = 0; i < MAX_CPUS; i++)
-    {
-        cache->cpu_cache[i] = (kmem_cpu_cache_t) {
-            .loaded = cache_make_magazine(cache, true),
-            .previous = cache_make_magazine(cache, false)
-        };
-    }
-}
-
 void *kmem_alloc_cache(kmem_cache_t *cache)
 {
     size_t cpu_id = sched_get_curr_thread()->assigned_cpu->id;
@@ -159,7 +137,25 @@ void kmem_free_cache(kmem_cache_t *cache, void *obj)
 kmem_cache_t *kmem_new_cache(const char *name, size_t size)
 {
     kmem_cache_t *cache = (kmem_cache_t *)(pm_alloc(0) + HHDM);
-    kmem_cache_intialize(cache, name, size);
+
+    *cache = (kmem_cache_t) {
+        .name = name,
+        .object_size = size,
+        .slabs_full = LIST_INIT,
+        .slabs_partial = LIST_INIT,
+        .slabs_lock = SPINLOCK_INIT,
+        .magazines_full = LIST_INIT,
+        .magazines_empty = LIST_INIT,
+        .magazines_lock = SPINLOCK_INIT
+    };
+
+    for (int i = 0; i < MAX_CPUS; i++)
+    {
+        cache->cpu_cache[i] = (kmem_cpu_cache_t) {
+            .loaded = cache_make_magazine(cache, true),
+            .previous = cache_make_magazine(cache, false)
+        };
+    }
 
     return cache;
 }
