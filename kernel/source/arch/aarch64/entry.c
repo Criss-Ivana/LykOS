@@ -9,6 +9,7 @@
 #include "proc/thread.h"
 
 #include "arch/aarch64/gic.h"
+#include "arch/aarch64/int.h"
 
 [[noreturn]] extern void kernel_main();
 
@@ -29,7 +30,8 @@ void __entry()
     simplefb_init();
     log(LOG_INFO, "Kernel compiled on %s at %s.", __DATE__, __TIME__);
 
-    // Exception table
+    // Interrupts
+    aarch64_int_init();
 
     // Memory
     pm_init();

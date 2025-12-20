@@ -29,5 +29,5 @@ fi
 if [ "$ARCH" = "x86_64" ]; then
     qemu-system-x86_64 -M q35 "${QEMU_FLAGS[@]}"
 elif [ "$ARCH" = "aarch64" ]; then
-    qemu-system-aarch64 -M virt -cpu cortex-a72 -device ramfb -device qemu-xhci -device usb-kbd -device usb-mouse "${QEMU_FLAGS[@]}"
+    qemu-system-aarch64 -M virt,gic-version=2 -cpu cortex-a72 -device ramfb -device qemu-xhci -device usb-kbd -device usb-mouse "${QEMU_FLAGS[@]}"
 fi
