@@ -1,6 +1,8 @@
 #pragma once
 
-#include "thread.h"
+#include "proc/proc.h"
+#include "proc/smp.h"
+#include "proc/thread.h"
 
 void sched_enqueue(thread_t *t);
 

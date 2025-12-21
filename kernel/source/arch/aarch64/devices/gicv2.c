@@ -25,7 +25,7 @@ static uintptr_t gicd_base;
 
 #define REG(addr) (*(volatile uint32_t *)(uintptr_t)(addr)) // MMIO helper
 
-void set_base(uintptr_t _gicc_base, uintptr_t _gicd_base)
+static void set_base(uintptr_t _gicc_base, uintptr_t _gicd_base)
 {
     gicc_base = _gicc_base;
     gicd_base = _gicd_base;
@@ -79,6 +79,7 @@ static void gic_eoi(uint32_t iar)
 aarch64_gic_t aarch64_gicv2 = (aarch64_gic_t) {
     .min_global_irq = 32,
     .max_global_irq = 1019,
+    .set_base = set_base,
     .gicc_init = gicc_init,
     .gicd_init = gicd_init,
     .enable_irq = gic_enable_irq,

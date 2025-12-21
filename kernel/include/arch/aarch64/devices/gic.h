@@ -23,6 +23,6 @@ typedef struct
 }
 aarch64_gic_t;
 
-extern const aarch64_gic_t *gic;
+extern aarch64_gic_t *gic;
 
-void aarch64_gic_detect_version();
+void aarch64_gic_detect();

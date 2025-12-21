@@ -8,7 +8,7 @@
 #include "proc/smp.h"
 #include "proc/thread.h"
 
-#include "arch/aarch64/gic.h"
+#include "arch/aarch64/devices/gic.h"
 #include "arch/aarch64/int.h"
 
 [[noreturn]] extern void kernel_main();
@@ -30,7 +30,7 @@ void __entry()
     simplefb_init();
     log(LOG_INFO, "Kernel compiled on %s at %s.", __DATE__, __TIME__);
 
-    // Interrupts
+    // EVT
     aarch64_int_init();
 
     // Memory
@@ -42,7 +42,9 @@ void __entry()
     acpi_init();
 
     // GIC
-    aarch64_gic_init();
+    aarch64_gic_detect(); // This needs ACPI
+    gic->gicd_init();
+    gic->gicc_init();
 
     kernel_main();
 }

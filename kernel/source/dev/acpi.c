@@ -1,5 +1,6 @@
 #include "dev/acpi/acpi.h"
 
+#include "assert.h"
 #include "bootreq.h"
 #include "hhdm.h"
 #include "log.h"
@@ -28,6 +29,8 @@ static bool extended;
 
 acpi_sdt_t *acpi_lookup(const char *signature)
 {
+    ASSERT(root_sdt);
+
     int entries = (root_sdt->length - sizeof(acpi_sdt_t)) / (extended ? 8 : 4);
     uint32_t *pointers32 = (uint32_t*)((uintptr_t)root_sdt + sizeof(acpi_sdt_t));
     uint64_t *pointers64 = (uint64_t*)((uintptr_t)root_sdt + sizeof(acpi_sdt_t));

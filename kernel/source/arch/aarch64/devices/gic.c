@@ -6,9 +6,11 @@
 #include "log.h"
 #include "panic.h"
 
-extern const aarch64_gic_t *gicv2;
+aarch64_gic_t *gic;
 
-void aarch64_gic_detect_version()
+extern aarch64_gic_t aarch64_gicv2;
+
+void aarch64_gic_detect()
 {
     acpi_madt_t *madt = (acpi_madt_t*)acpi_lookup("APIC");
     if (!madt)
@@ -50,7 +52,7 @@ void aarch64_gic_detect_version()
     if (!gicc_base || !gicd_base)
         panic("No GICC or GICD found in MADT");
 
-    gic = gicv2;
+    gic = &aarch64_gicv2;
 
     gic->set_base(gicc_base + HHDM, gicd_base + HHDM);
 }

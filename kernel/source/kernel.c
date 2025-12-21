@@ -50,18 +50,6 @@ void kernel_main()
             mod->install();
     }
 
-    // Test
-
-    #include "arch/lcpu.h"
-    #include "arch/irq.h"
-    #include "arch/timer.h"
-
-    arch_irq_set_local_handler(arch_timer_get_local_irq(), (uintptr_t)&aaa);
-    arch_timer_oneshot(5000);
-
-    while (true)
-        ;
-
     // Start other CPU cores and scheduler
 
     smp_init();

@@ -1,14 +1,14 @@
 subdir('devices')
 
 as_files += files(
-    'int.S',
+    'evt.S',
     'thread.S',
 )
 
 c_files += files(
     'clock.c',
     'entry.c',
-    'int.c',
+    'evt.c',
     'lcpu.c',
     'paging.c',
     'serial.c',
