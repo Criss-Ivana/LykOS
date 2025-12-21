@@ -4,12 +4,33 @@
 #include "log.h"
 #include "mod/ksym.h"
 #include "mod/module.h"
+#include "proc/proc.h"
 #include "panic.h"
 #include "proc/smp.h"
 #include "utils/string.h"
 #include <stddef.h>
 #include <stdint.h>
 
+void func1()
+{
+    while(true)
+    {
+        const char *message = "Hello from syscall!";
+        long result;
+
+        __asm__ volatile (
+            "mov $0, %%rax\n\t"      // syscall number 0 in rax
+            "mov %1, %%rdi\n\t"      // string pointer in rdi
+            "syscall\n\t"            // invoke syscall
+            "mov %%rax, %0\n\t"      // save return value
+            : "=r" (result)          // output: result
+            : "r" (message)          // input: message pointer
+            : "%rax", "%rdi", "%rcx", "%r11", "memory"  // clobbers
+        );
+    }
+}
+
+void kernel_main()
 void aaa()
 {
     log(LOG_DEBUG, "aaaa");
@@ -51,6 +72,12 @@ void kernel_main()
     }
 
     // Start other CPU cores and scheduler
+    #include "proc/proc.h"
+    #include "proc/thread.h"
+    #include "proc/sched.h"
+    proc_t *proc = proc_create("test", false);
+    thread_t *thread = thread_create(proc, (uintptr_t)&func1);
+    sched_enqueue(thread);
 
     smp_init();
 

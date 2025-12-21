@@ -19,7 +19,7 @@ thread_t *thread_create(proc_t *proc, uintptr_t entry)
         .sched_thread_list_node = LIST_NODE_INIT,
         .ref_count = 1
     };
-    arch_thread_context_init(&thread->context, false, entry);
+    arch_thread_context_init(&thread->context, proc->as, proc->kernel, entry);
 
     spinlock_acquire(&slock);
     next_tid++;

@@ -99,7 +99,7 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
     }
 
     // 4 KiB page
-    pml1[pml1e] = paddr | _prot | PTE_PRESENT;
+    pml1[pml1e] = paddr | _prot | PTE_PRESENT | PTE_USER;
     return 0;
 }
 
@@ -140,6 +140,6 @@ void arch_paging_init()
     {
         pte_t *pml3 = (pte_t *)(pm_alloc(0) + HHDM);
         memset(pml3, 0, 0x1000);
-        higher_half_entries[i] = (pte_t)((uintptr_t)pml3 - HHDM) | PTE_PRESENT | PTE_WRITE;
+        higher_half_entries[i] = (pte_t)((uintptr_t)pml3 - HHDM) | PTE_PRESENT | PTE_WRITE | PTE_USER;
     }
 }

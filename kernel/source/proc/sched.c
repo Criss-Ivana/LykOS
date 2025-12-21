@@ -1,6 +1,7 @@
 #include "proc/sched.h"
 
 #include "arch/lcpu.h"
+#include "log.h"
 #include "proc/smp.h"
 #include "proc/thread.h"
 #include "sync/spinlock.h"
@@ -65,6 +66,8 @@ void sched_yield()
     thread_t *old = sched_get_curr_thread();
     thread_t *new = pick_next_thread();
     spinlock_release(&slock);
+
+    log(LOG_DEBUG, "%p %p", old, new);
 
     arch_thread_context_switch(&old->context, &new->context);
 }
