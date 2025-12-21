@@ -6,6 +6,7 @@
 #include "mod/module.h"
 #include "panic.h"
 #include "proc/smp.h"
+#include "utils/string.h"
 #include <stddef.h>
 #include <stdint.h>
 
