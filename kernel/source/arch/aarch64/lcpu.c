@@ -1,6 +1,8 @@
+// API
 #include "arch/lcpu.h"
-
-#include <stdint.h>
+//
+#include "arch/aarch64/devices/gic.h"
+#include "arch/aarch64/int.h"
 
 void arch_lcpu_halt()
 {
@@ -43,5 +45,6 @@ void arch_lcpu_thread_reg_write(size_t t)
 
 void arch_lcpu_init()
 {
-
+    aarch64_int_init();
+    gic->gicc_init();
 }

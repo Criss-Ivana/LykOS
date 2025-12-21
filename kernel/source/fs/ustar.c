@@ -138,7 +138,7 @@ int ustar_extract(const void *archive, uint64_t archive_size, vnode_t *dest_vn)
                 {
                     uint64_t written;
                     if (vfs_write(file_vn, (void *)(data+offset), file_size, 0, &written) != EOK)
-                        log(LOG_FATAL, "USTAR: failed to write to created file");
+                        log(LOG_ERROR, "USTAR: failed to write to created file");
                 }
                 break;
             }

@@ -13,4 +13,5 @@ c_files += files(
     'bootreq.c',
     'kernel.c',
     'log.c',
+    'panic.c',
 )

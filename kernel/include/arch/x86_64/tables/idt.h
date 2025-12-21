@@ -1,4 +1,4 @@
 #pragma once
 
-void idt_make();
-void idt_load();
+void x86_64_idt_make();
+void x86_64_idt_load();

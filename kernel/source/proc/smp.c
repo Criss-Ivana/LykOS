@@ -4,6 +4,7 @@
 #include "bootreq.h"
 #include "log.h"
 #include "mm/heap.h"
+#include "panic.h"
 #include "proc/proc.h"
 #include "proc/sched.h"
 #include "proc/thread.h"
@@ -11,13 +12,18 @@
 list_t smp_cpus = LIST_INIT;
 static proc_t *idle_proc;
 
+static spinlock_t slock;
+
 [[noreturn]] [[gnu::noinline]] static void thread_idle_func(struct limine_mp_info *mp_info)
 {
-    arch_lcpu_init();
+    // Sequentially initializing CPU cores allows for easier debugging.
+    spinlock_acquire(&slock);
 
     arch_lcpu_thread_reg_write((size_t)mp_info->extra_argument);
-
+    arch_lcpu_init();
     log(LOG_INFO, "CPU #%02d initialized. Idling...", ((thread_t *)mp_info->extra_argument)->assigned_cpu->id);
+
+    spinlock_release(&slock);
 
     while (true)
         sched_yield();
@@ -26,7 +32,7 @@ static proc_t *idle_proc;
 void smp_init()
 {
     if (bootreq_mp.response == NULL)
-        log(LOG_FATAL, "Invalid SMP info provided by the bootloader");
+        panic("Invalid SMP info provided by the bootloader!");
 
     idle_proc = proc_create("System Idle Process", true);
 
@@ -40,7 +46,7 @@ void smp_init()
             .id = i,
             .idle_thread = idle_thread,
             .curr_thread = idle_thread,
-            .cpu_list_node =  LIST_NODE_INIT
+            .cpu_list_node = LIST_NODE_INIT
         };
         list_append(&smp_cpus, &cpu->cpu_list_node);
         idle_thread->assigned_cpu = cpu;

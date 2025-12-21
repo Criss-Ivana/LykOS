@@ -1,9 +1,11 @@
 #include "arch/x86_64/devices/lapic.h"
 
+#include "arch/irq.h"
 #include "arch/x86_64/devices/pit.h"
 #include "arch/x86_64/msr.h"
 #include "hhdm.h"
 #include "log.h"
+#include "panic.h"
 
 #include <stddef.h>
 
@@ -23,18 +25,22 @@
 #define TSC_DEADLINE (2 << 17)
 #define MASK         (1 << 16)
 
+#define IRQ 64
+
 static uint64_t g_lapic_base;
 static uint64_t g_lapic_timer_freq = 0;
 
 static inline void lapic_write(uint32_t reg, uint32_t data)
 {
-    *(volatile uint32_t*)(g_lapic_base + reg) = data;
+    *(volatile uint32_t *)(g_lapic_base + reg) = data;
 }
 
 static inline uint32_t lapic_read(uint32_t reg)
 {
-    return *(volatile uint32_t*)(g_lapic_base + reg);
+    return *(volatile uint32_t *)(g_lapic_base + reg);
 }
+
+// timer.h API
 
 void arch_timer_stop()
 {
@@ -42,13 +48,20 @@ void arch_timer_stop()
     lapic_write(REG_TIMER_INITIAL_COUNT, 0);
 }
 
-void arch_timer_oneshoot(size_t irq, uint64_t us)
+void arch_timer_oneshot(size_t us)
 {
     lapic_write(REG_TIMER_LVT, MASK);
-    lapic_write(REG_TIMER_LVT, ONE_SHOOT | 32 + irq);
+    lapic_write(REG_TIMER_LVT, ONE_SHOOT | (32 + IRQ));
     lapic_write(REG_TIMER_DIV, 0);
     lapic_write(REG_TIMER_INITIAL_COUNT, us * g_lapic_timer_freq / 1'000'000);
 }
+
+size_t arch_timer_get_local_irq()
+{
+    return IRQ;
+}
+
+//
 
 void x86_64_lapic_send_eoi()
 {
@@ -63,6 +76,8 @@ void x86_64_lapic_ipi(uint32_t lapic_id, uint32_t vec)
 
 void x86_64_lapic_init()
 {
+    if (!arch_irq_reserve_local(IRQ))
+        panic("Could not reserve IRQ %d for LAPIC!", IRQ);
     g_lapic_base = (x86_64_msr_read(X86_64_MSR_APIC_BASE) & 0xFFFFFFFFFF000) + HHDM;
     lapic_write(REG_SPURIOUS, (1 << 8) | 0xFF);
 

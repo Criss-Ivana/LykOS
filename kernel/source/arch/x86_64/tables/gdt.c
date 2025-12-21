@@ -93,7 +93,7 @@ static gdt_entry_t g_gdt[] = {
     {}
 };
 
-void gdt_load()
+void x86_64_gdt_load()
 {
     gdtr_t gdtr = (gdtr_t){
         .limit = sizeof(g_gdt) - 1,
@@ -105,7 +105,7 @@ void gdt_load()
     log(LOG_INFO, "GDT loaded");
 }
 
-void gdt_load_tss(tss_t *tss)
+void x86_64_gdt_load_tss(tss_t *tss)
 {
     memset(tss, 0, sizeof(tss_t));
 

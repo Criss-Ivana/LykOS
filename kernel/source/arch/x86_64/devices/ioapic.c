@@ -1,42 +1,11 @@
 #include "arch/x86_64/devices/ioapic.h"
 #include "arch/irq.h"
 
-#include "dev/acpi.h"
+#include "dev/acpi/tables/madt.h"
 #include "hhdm.h"
 #include "log.h"
-
-typedef struct
-{
-    acpi_sdt_t sdt;
-    uint32_t lapic_addr;
-    uint32_t flags;
-}
-__attribute__((packed))
-madt_t;
-
-typedef struct
-{
-    uint8_t type;
-    uint8_t length;
-    uint8_t id;
-    uint8_t _rsv;
-    uint32_t ioapic_addr;
-    uint32_t gsi_base;
-}
-__attribute__((packed))
-madt_ioapic_t;
-
-typedef struct
-{
-    uint8_t type;
-    uint8_t length;
-    uint8_t bus;
-    uint8_t source;
-    uint32_t gsi;
-    uint16_t flags;
-}
-__attribute__((packed))
-madt_int_source_override_t;
+#include "panic.h"
+#include "sync/spinlock.h"
 
 #define IOREGSEL  0x00
 #define IOWIN     0x10
@@ -49,9 +18,6 @@ madt_int_source_override_t;
 #define SO_FLAG_POLARITY_HIGH 0b0001
 #define SO_TRIGGER_EDGE       0b0100
 #define SO_TRIGGER_LEVEL      0b1100
-
-#define MADT_TYPE_IOAPIC 1
-#define MADT_TYPE_SOURCE_OVERRIDE 2
 
 typedef struct
 {
@@ -68,8 +34,6 @@ typedef struct
 }
 __attribute__((packed))
 ioapic_redirect_t;
-
-static uintptr_t ioapic_base = 0;
 
 static struct
 {
@@ -95,26 +59,38 @@ g_irq_redirection_table[16] = {
     { 15, 0 }
 };
 
+static uintptr_t ioapic_base = 0;
+
+#define MAX_IRQS 24
+
+static size_t     global_irq_count;
+static bool       global_irq_used[MAX_IRQS];
+static spinlock_t slock;
+
+// Helpers
+
 static void ioapic_write(uint32_t reg, uint32_t data)
 {
-    *(volatile uint32_t*)(ioapic_base + IOREGSEL) = reg; // IOREGSEL
-    *(volatile uint32_t*)(ioapic_base + IOWIN) = data;   // IOWIN
+    *(volatile uint32_t *)(ioapic_base + IOREGSEL) = reg; // IOREGSEL
+    *(volatile uint32_t *)(ioapic_base + IOWIN) = data;   // IOWIN
 }
 
 static uint32_t ioapic_read(uint32_t reg)
 {
-    *(volatile uint32_t*)(ioapic_base + IOREGSEL) = reg; // IOREGSEL
-    return *(volatile uint32_t*)(ioapic_base + IOWIN);   // IOWIN
+    *(volatile uint32_t *)(ioapic_base + IOREGSEL) = reg; // IOREGSEL
+    return *(volatile uint32_t *)(ioapic_base + IOWIN);   // IOWIN
 }
+
+// Main IOAPIC code
 
 void x86_64_ioapic_init()
 {
-    madt_t *madt = (madt_t*)acpi_lookup("APIC");
+    acpi_madt_t *madt = (acpi_madt_t *)acpi_lookup("APIC");
     if (!madt)
-        log(LOG_FATAL, "MADT not found!");
+        panic("MADT not found!");
 
-    uint8_t *ptr = (uint8_t*)madt + sizeof(madt_t);
-    uint8_t *end = (uint8_t*)madt + madt->sdt.length;
+    uint8_t *ptr = (uint8_t *)madt + sizeof(acpi_madt_t);
+    uint8_t *end = (uint8_t *)madt + madt->sdt.length;
     while (ptr < end)
     {
         uint8_t type = ptr[0];
@@ -122,11 +98,12 @@ void x86_64_ioapic_init()
 
         switch (type)
         {
-            case MADT_TYPE_IOAPIC:
-                ioapic_base = ((madt_ioapic_t*)ptr)->ioapic_addr + HHDM;
+            case ACPI_MADT_TYPE_IOAPIC:
+                ioapic_base = ((acpi_madt_ioapic_t *)ptr)->ioapic_addr + HHDM;
+                global_irq_count = ((ioapic_read(IOAPICVER) >> 16) & 0xFF) + 1;
             break;
-            case MADT_TYPE_SOURCE_OVERRIDE:
-                madt_int_source_override_t *so = (madt_int_source_override_t*)ptr;
+            case ACPI_MADT_TYPE_SOURCE_OVERRIDE:
+                acpi_madt_int_source_override_t *so = (acpi_madt_int_source_override_t *)ptr;
                 g_irq_redirection_table[so->source].dest  = so->gsi;
                 g_irq_redirection_table[so->source].flags = so->flags;
             break;
@@ -136,9 +113,9 @@ void x86_64_ioapic_init()
     }
 
     if (ioapic_base)
-        log(LOG_INFO, "I/O APIC initialized.");
+        log(LOG_INFO, "IOAPIC initialized.");
     else
-        log(LOG_FATAL, "I/O APIC interrupt controller structure not found!");
+        panic("IOAPIC interrupt controller structure not found!");
 }
 
 void x86_64_ioapic_map_gsi(uint8_t gsi, uint8_t lapic_id, bool low_polarity, bool trigger_mode, uint8_t vector)
@@ -191,15 +168,75 @@ void x86_64_ioapic_map_legacy_irq(uint8_t irq, uint8_t lapic_id, bool fallback_l
         irq = g_irq_redirection_table[irq].dest;
     }
 
-    x86_64_ioapic_map_gsi(irq, lapic_id, fallback_low_polarity, fallback_trigger_mode, vector);
+    if (arch_irq_reserve_global(irq))
+        x86_64_ioapic_map_gsi(irq, lapic_id, fallback_low_polarity, fallback_trigger_mode, vector);
+    else
+        panic("Could not reserve global irq %d for legacy mapping!", irq);
 }
 
-size_t arch_irq_alloc_global()
+// irq.h API
+
+bool arch_irq_reserve_global(size_t global_irq)
 {
-    return 0;
+    if (global_irq >= global_irq_count)
+        return false;
+
+    spinlock_acquire(&slock);
+
+    if (global_irq_used[global_irq])
+    {
+        spinlock_release(&slock);
+        return false;
+    }
+
+    global_irq_used[global_irq] = true;
+    spinlock_release(&slock);
+    return true;
+}
+
+bool arch_irq_alloc_global(size_t *out)
+{
+    spinlock_acquire(&slock);
+
+    for (size_t i = 0; i < global_irq_count; i++)
+    {
+        if (!global_irq_used[i])
+        {
+            global_irq_used[i] = true;
+            *out = i;
+            spinlock_release(&slock);
+            return true;
+        }
+    }
+
+    spinlock_release(&slock);
+    return false;
 }
 
 void arch_irq_free_global(size_t global_irq)
 {
+    spinlock_acquire(&slock);
 
+    global_irq_used[global_irq] = false;
+
+    spinlock_release(&slock);
+}
+
+bool arch_irq_route(size_t global_irq, size_t target_cpu, size_t local_irq)
+{
+    if (global_irq >= global_irq_count)
+        return false;
+
+    bool polarity = false;
+    bool trigger  = false;
+
+    x86_64_ioapic_map_gsi(
+        (uint8_t)global_irq,
+        (uint8_t)target_cpu,
+        polarity,
+        trigger,
+        (uint8_t)local_irq + 32 // IRQ 0 -> vector 32
+    );
+
+    return true;
 }

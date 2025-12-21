@@ -12,4 +12,6 @@ typedef enum
 }
 log_level_t;
 
+void vlog(log_level_t level, const char *format, va_list vargs);
+
 void log(log_level_t level, const char *format, ...);

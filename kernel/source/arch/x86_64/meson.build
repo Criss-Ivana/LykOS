@@ -9,7 +9,6 @@ asm_files += files(
 
 c_files += files(
     'entry.c',
-    'int.c',
     'ioport.c',
     'lcpu.c',
     'msr.c',

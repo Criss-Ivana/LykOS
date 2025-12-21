@@ -2,13 +2,10 @@
 #include "fs/ustar.h"
 #include "fs/vfs.h"
 #include "log.h"
-#include "mm/heap.h"
-#include "mm/mm.h"
-#include "mm/pm.h"
-#include "mm/vm.h"
 #include "mod/ksym.h"
 #include "mod/module.h"
 #include "proc/proc.h"
+#include "panic.h"
 #include "proc/smp.h"
 #include "utils/string.h"
 #include <stddef.h>
@@ -34,16 +31,19 @@ void func1()
 }
 
 void kernel_main()
+void aaa()
 {
-    pm_init();
-    heap_init();
-    vm_init();
+    log(LOG_DEBUG, "aaaa");
+}
 
+void kernel_main()
+{
     vfs_init();
 
     // Loading initial ramdisk
 
-    if (!bootreq_module.response ) log(LOG_FATAL, "AUCI.");
+    if (bootreq_module.response == NULL)
+        panic("Invalid bootloader module response provided by the bootloader!");
     for (size_t i = 0; i < bootreq_module.response->module_count; i++)
     {
         if (strcmp(bootreq_module.response->modules[i]->path, "/initrd.tar") == 0)
@@ -67,8 +67,8 @@ void kernel_main()
     if (vfs_lookup("/boot/modules/test_module.o", 0, &test_module_file) == EOK && test_module_file->type == VREG)
     {
         module_t *mod;
-        module_load(test_module_file, &mod);
-        mod->install();
+        if (module_load(test_module_file, &mod) == EOK)
+            mod->install();
     }
 
     // Start other CPU cores and scheduler

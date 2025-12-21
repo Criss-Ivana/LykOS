@@ -1,12 +1,17 @@
 #include "arch/lcpu.h"
-#include "arch/x86_64/syscall.h"
-#include "arch/x86_64/tables/gdt.h"
-#include "arch/x86_64/tables/idt.h"
-#include "dev/acpi.h"
+#include "dev/acpi/acpi.h"
 #include "gfx/simplefb.h"
 #include "log.h"
+#include "mm/heap.h"
+#include "mm/pm.h"
+#include "mm/vm.h"
 #include "proc/smp.h"
 #include "proc/thread.h"
+
+#include "arch/x86_64/devices/ioapic.h"
+#include "arch/x86_64/devices/lapic.h"
+#include "arch/x86_64/tables/gdt.h"
+#include "arch/x86_64/tables/idt.h"
 
 [[noreturn]] extern void kernel_main();
 
@@ -24,18 +29,27 @@ static thread_t early_thread = (thread_t) {
 
 void __entry()
 {
+    // Load pseudo-thread
+    arch_lcpu_thread_reg_write((size_t)&early_thread.context);
+
     simplefb_init();
     log(LOG_INFO, "Kernel compiled on %s at %s.", __DATE__, __TIME__);
 
-    gdt_load();
-    idt_make();
-    idt_load();
+    // Tables
+    x86_64_gdt_load();
+    x86_64_idt_make();
+    x86_64_idt_load();
 
+    // Memory
+    pm_init();
+    heap_init();
+    vm_init();
+
+    // ACPI
     acpi_init();
 
-    x86_64_syscall_init();
-
-    arch_lcpu_thread_reg_write((size_t)&early_thread.context);
+    // IOAPIC & LAPIC
+    x86_64_ioapic_init(); // requires acpi
 
     kernel_main();
 }

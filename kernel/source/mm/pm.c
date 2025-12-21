@@ -1,10 +1,12 @@
 #include "mm/pm.h"
 
 #include "arch/types.h"
+#include "assert.h"
 #include "bootreq.h"
 #include "hhdm.h"
 #include "log.h"
 #include "mm/mm.h"
+#include "panic.h"
 #include "sync/spinlock.h"
 #include "utils/list.h"
 
@@ -69,6 +71,8 @@ uintptr_t pm_alloc(uint8_t order)
 
 void pm_free(uintptr_t addr)
 {
+    ASSERT(addr < HHDM);
+
     spinlock_acquire(&slock);
 
     size_t idx = addr / ARCH_PAGE_GRAN;
@@ -106,6 +110,10 @@ void pm_free(uintptr_t addr)
 
 void pm_init()
 {
+    if (bootreq_memmap.response == NULL
+    || bootreq_memmap.response->entry_count == 0)
+        panic("Invalid memory map provided by the bootloader!");
+
     for (int i = 0; i <= PM_MAX_BLOCK_ORDER; i++)
         levels[i] = LIST_INIT;
 
