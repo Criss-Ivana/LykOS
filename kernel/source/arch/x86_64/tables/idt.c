@@ -1,9 +1,11 @@
+// API
 #include "arch/x86_64/tables/idt.h"
 #include "arch/irq.h"
-
+//
 #include "arch/lcpu.h"
 #include "arch/x86_64/tables/gdt.h"
 #include "log.h"
+#include "proc/sched.h"
 #include "sync/spinlock.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -77,12 +79,16 @@ typedef struct
 __attribute__((packed))
 cpu_state_t;
 
+#define MAX_CPU_COUNT 32
+
+#define CURR_CPU (sched_get_curr_thread()->assigned_cpu->id)
+
 static struct
 {
     bool allocated;
     void (*handler)();
 }
-irq_handlers[128];
+irq_handlers[MAX_CPU_COUNT][128];
 static spinlock_t slock = SPINLOCK_INIT;
 
 void arch_int_handler(cpu_state_t *cpu_state)
@@ -97,8 +103,8 @@ void arch_int_handler(cpu_state_t *cpu_state)
         spinlock_acquire(&slock);
 
         size_t irq = cpu_state->int_no - 32;
-        if (irq_handlers[irq].allocated && irq_handlers[irq].handler)
-            irq_handlers[irq].handler();
+        if (irq_handlers[CURR_CPU][irq].allocated && irq_handlers[CURR_CPU][irq].handler)
+            irq_handlers[CURR_CPU][irq].handler();
 
         spinlock_release(&slock);
     }
@@ -110,13 +116,13 @@ bool arch_irq_reserve_local(size_t local_irq)
 {
     spinlock_acquire(&slock);
 
-    if (irq_handlers[local_irq].allocated)
+    if (irq_handlers[CURR_CPU][local_irq].allocated)
     {
         spinlock_release(&slock);
         return false;
     }
 
-    irq_handlers[local_irq].allocated = true;
+    irq_handlers[CURR_CPU][local_irq].allocated = true;
     spinlock_release(&slock);
     return true;
 }
@@ -126,7 +132,7 @@ bool arch_irq_alloc_local(size_t *out)
     spinlock_acquire(&slock);
 
     for (size_t i = 0; i < 256; i++)
-        if (!irq_handlers[i].allocated)
+        if (!irq_handlers[CURR_CPU][i].allocated)
         {
             *out = i;
             spinlock_release(&slock);
@@ -141,7 +147,7 @@ void arch_irq_free_local(size_t local_irq)
 {
     spinlock_acquire(&slock);
 
-    irq_handlers[local_irq].allocated = false;
+    irq_handlers[CURR_CPU][local_irq].allocated = false;
 
     spinlock_release(&slock);
 }
@@ -150,7 +156,7 @@ void arch_irq_set_local_handler(size_t local_irq, uintptr_t handler)
 {
     spinlock_acquire(&slock);
 
-    irq_handlers[local_irq].handler = (void(*)())handler;
+    irq_handlers[CURR_CPU][local_irq].handler = (void(*)())handler;
 
     spinlock_release(&slock);
 }

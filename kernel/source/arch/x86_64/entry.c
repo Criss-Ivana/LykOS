@@ -50,7 +50,6 @@ void __entry()
 
     // IOAPIC & LAPIC
     x86_64_ioapic_init(); // requires acpi
-    x86_64_lapic_init();
 
     kernel_main();
 }

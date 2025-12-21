@@ -4,6 +4,7 @@
 #include "arch/x86_64/devices/lapic.h"
 #include "arch/x86_64/tables/gdt.h"
 #include "arch/x86_64/tables/idt.h"
+#include "mm/vm.h"
 
 #include <stdint.h>
 
@@ -48,6 +49,7 @@ void arch_lcpu_thread_reg_write(size_t t)
 
 void arch_lcpu_init()
 {
+    vm_addrspace_load(vm_kernel_as);
     x86_64_gdt_load();
     x86_64_idt_load();
     x86_64_lapic_init();
