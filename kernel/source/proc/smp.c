@@ -63,7 +63,7 @@ void smp_init()
             continue;
         }
 
-        // __atomic_store_n(&mp_info->goto_address, (limine_goto_address)&thread_idle_func, __ATOMIC_SEQ_CST);
+        __atomic_store_n(&mp_info->goto_address, (limine_goto_address)&thread_idle_func, __ATOMIC_SEQ_CST);
     }
 
     // Also initialize the bootstrap processor.
