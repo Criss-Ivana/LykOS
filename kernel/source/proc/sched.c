@@ -67,7 +67,5 @@ void sched_yield()
     thread_t *new = pick_next_thread();
     spinlock_release(&slock);
 
-    log(LOG_DEBUG, "%p %p", old, new);
-
     arch_thread_context_switch(&old->context, &new->context);
 }
