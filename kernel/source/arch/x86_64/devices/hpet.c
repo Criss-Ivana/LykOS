@@ -18,11 +18,13 @@ static inline void hpet_write_reg(uint64_t offset, uint64_t value)
     *(volatile uint64_t *)((uintptr_t)hpet_base + offset) = value;
 }
 
-int hpet_init()
+bool hpet_init()
 {
     hpet_table_t *hpet_table = (hpet_table_t *)acpi_lookup("HPET");
-    hpet_base = (volatile void *)(uintptr_t)(hpet_table->address.address + HHDM);
+    if(!hpet_table)
+        return false;
 
+    hpet_base = (volatile void *)(uintptr_t)(hpet_table->address.address + HHDM);
     uint64_t capabilities = hpet_read_reg(HPET_GENERAL_CAPABILITIES);
     hpet_period_fs = capabilities >> 32;
     
@@ -35,7 +37,7 @@ int hpet_init()
     hpet_write_reg(HPET_GENERAL_CONFIG, config);
 
     log(LOG_DEBUG, "HPET initialized.");
-    return EOK;
+    return true;
 }
 
 uint64_t hpet_get_frequency()
@@ -73,14 +75,4 @@ void hpet_sleep_ns(uint64_t nanoseconds)
 
     while (hpet_read_counter() < end)
         __asm__ volatile ("pause");
-}
-
-void hpet_sleep_us(uint64_t microseconds)
-{
-    hpet_sleep_ns(microseconds * 1000);
-}
-
-void hpet_sleep_ms(uint64_t milliseconds)
-{
-    hpet_sleep_ns(milliseconds * 1000000);
 }

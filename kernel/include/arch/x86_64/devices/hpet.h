@@ -57,10 +57,7 @@ typedef struct
 __attribute__((packed))
 hpet_table_t;
 
-
-int hpet_init();
+bool hpet_init();
 uint64_t hpet_get_frequency();
 uint64_t hpet_read_counter();
 void hpet_sleep_ns(uint64_t nanoseconds);
-void hpet_sleep_us(uint64_t microseconds);
-void hpet_sleep_ms(uint64_t milliseconds);
