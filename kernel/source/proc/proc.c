@@ -23,6 +23,7 @@ proc_t *proc_create(const char *name, bool is_kernel)
         .ref_count = 1
     };
 
+    fd_table_init(&proc->fd_table);
     spinlock_acquire(&slock);
     next_pid++;
     list_append(&proc_list, &proc->proc_list_node);
