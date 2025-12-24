@@ -11,6 +11,7 @@ static spinlock_t slock = SPINLOCK_INIT;
 proc_t *proc_create(const char *name, bool is_kernel)
 {
     proc_t *proc = heap_alloc(sizeof(proc_t));
+
     *proc = (proc_t) {
         .pid = next_pid,
         .name = strdup(name),
@@ -20,8 +21,11 @@ proc_t *proc_create(const char *name, bool is_kernel)
         .threads = LIST_INIT,
         .proc_list_node = LIST_NODE_INIT,
         .slock = SPINLOCK_INIT,
-        .ref_count = 1
+        .ref_count = 1,
+        .fd_table = proc->fd_table
     };
+
+    fd_table_init(&proc->fd_table);
 
     spinlock_acquire(&slock);
     next_pid++;

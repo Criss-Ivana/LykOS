@@ -2,6 +2,7 @@
 
 #include "mm/vm.h"
 #include "utils/list.h"
+#include "proc/fd.h"
 #include "sync/spinlock.h"
 
 typedef enum
@@ -20,6 +21,8 @@ typedef struct proc
     proc_status_t status;
     vm_addrspace_t *as;
     list_t threads;
+
+    fd_table_t fd_table;
 
     list_node_t proc_list_node;
     spinlock_t slock;
