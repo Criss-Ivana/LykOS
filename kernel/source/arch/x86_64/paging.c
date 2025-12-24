@@ -103,6 +103,51 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
     return 0;
 }
 
+// Utils
+
+bool arch_paging_vaddr_to_paddr(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t *out_paddr)
+{
+    uint64_t pml4e = (vaddr >> 39) & 0x1FF;
+    uint64_t pml3e = (vaddr >> 30) & 0x1FF;
+    uint64_t pml2e = (vaddr >> 21) & 0x1FF;
+    uint64_t pml1e = (vaddr >> 12) & 0x1FF;
+
+    pte_t pml4ent = map->pml4[pml4e];
+    if (!(pml4ent & PTE_PRESENT))
+        return false;
+
+    pte_t *pml3 = (pte_t *)(PTE_ADDR_MASK(pml4ent) + HHDM);
+    pte_t pml3ent = pml3[pml3e];
+    if (!(pml3ent & PTE_PRESENT))
+        return false;
+
+    if (pml3ent & PTE_HUGE)
+    {
+        *out_paddr = PTE_ADDR_MASK(pml3ent) + (vaddr & ((1ull << 30) - 1));
+        return true;
+    }
+
+    pte_t *pml2 = (pte_t *)(PTE_ADDR_MASK(pml3ent) + HHDM);
+    pte_t pml2ent = pml2[pml2e];
+    if (!(pml2ent & PTE_PRESENT))
+        return false;
+
+    if (pml2ent & PTE_HUGE)
+    {
+        *out_paddr = PTE_ADDR_MASK(pml2ent) + (vaddr & ((1ull << 21) - 1));
+        return true;
+    }
+
+    pte_t *pml1 = (pte_t *)(PTE_ADDR_MASK(pml2ent) + HHDM);
+    pte_t pml1ent = pml1[pml1e];
+    if (!(pml1ent & PTE_PRESENT))
+        return false;
+
+    *out_paddr = PTE_ADDR_MASK(pml1ent) + (vaddr & 0xFFF);
+    return true;
+}
+
+
 // Map creation and destruction
 
 static pte_t higher_half_entries[256];

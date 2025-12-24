@@ -1,5 +1,6 @@
 #pragma once
 
+#include "arch/types.h"
 #include <stddef.h>
 #include <stdint.h>
 

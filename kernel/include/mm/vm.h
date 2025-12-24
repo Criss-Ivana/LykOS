@@ -61,6 +61,10 @@ int vm_map_vnode(vm_addrspace_t *as, uintptr_t vaddr, size_t length,
                  uintptr_t *out);
 int vm_unmap(vm_addrspace_t *as, uintptr_t vaddr, size_t length);
 
+// Utils
+
+size_t vm_copy_to(vm_addrspace_t *dest_as, uintptr_t dest, uintptr_t src, size_t count);
+
 // Address space creation and destruction
 
 vm_addrspace_t *vm_addrspace_create();

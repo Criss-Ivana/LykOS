@@ -105,6 +105,54 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
     return 0;
 }
 
+// Utils
+
+bool arch_paging_vaddr_to_paddr(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t *out_paddr)
+{
+    uint64_t l0e = (vaddr >> 39) & 0x1FF;
+    uint64_t l1e = (vaddr >> 30) & 0x1FF;
+    uint64_t l2e = (vaddr >> 21) & 0x1FF;
+    uint64_t l3e = (vaddr >> 12) & 0x1FF;
+
+    pte_t *l0 = map->pml4[vaddr >= HHDM ? 1 : 0];
+    pte_t l0ent = l0[l0e];
+    if (!(l0ent & PTE_VALID))
+        return false;
+
+    pte_t *l1 = (pte_t *)(PTE_ADDR_MASK(l0ent) + HHDM);
+    pte_t l1ent = l1[l1e];
+    if (!(l1ent & PTE_VALID))
+        return false;
+
+    // 1 GiB block
+    if (!(l1ent & PTE_TABLE))
+    {
+        *out_paddr = PTE_ADDR_MASK(l1ent) + (vaddr & ((1ull << 30) - 1));
+        return true;
+    }
+
+    pte_t *l2 = (pte_t *)(PTE_ADDR_MASK(l1ent) + HHDM);
+    pte_t l2ent = l2[l2e];
+    if (!(l2ent & PTE_VALID))
+        return false;
+
+    // 2 MiB block
+    if (!(l2ent & PTE_TABLE))
+    {
+        *out_paddr = PTE_ADDR_MASK(l2ent) + (vaddr & ((1ull << 21) - 1));
+        return true;
+    }
+
+    pte_t *l3 = (pte_t *)(PTE_ADDR_MASK(l2ent) + HHDM);
+    pte_t l3ent = l3[l3e];
+    if (!(l3ent & PTE_VALID))
+        return false;
+
+    // 4 KiB page
+    *out_paddr = PTE_ADDR_MASK(l3ent) + (vaddr & 0xFFF);
+    return true;
+}
+
 // Map creation and destruction
 
 pte_t *higher_half_pml4;

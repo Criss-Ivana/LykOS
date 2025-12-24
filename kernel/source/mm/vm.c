@@ -7,6 +7,7 @@
 #include "mm/heap.h"
 #include "mm/mm.h"
 #include "mm/pm.h"
+#include "panic.h"
 #include "uapi/errno.h"
 #include "utils/math.h"
 
@@ -174,6 +175,29 @@ int vm_unmap(vm_addrspace_t *as, uintptr_t vaddr, size_t length)
 
     spinlock_release(&as->slock);
     return EOK;
+}
+
+// Utils
+
+size_t vm_copy_to(vm_addrspace_t *dest_as, uintptr_t dest, uintptr_t src, size_t count)
+{
+    size_t i = 0;
+    while (i < count)
+    {
+        size_t offset = (dest + i) % ARCH_PAGE_GRAN;
+        uintptr_t phys;
+        if(!arch_paging_vaddr_to_paddr(dest_as->page_map, dest + i, &phys))
+        {
+            // TODO: Handle this
+            panic("Not mapped!");
+        }
+
+        size_t len = MIN(count - i, ARCH_PAGE_GRAN - offset);
+        memcpy((void*)(phys + HHDM), (void *)src, len);
+        i += len;
+        src += len;
+    }
+    return i;
 }
 
 // Map creation and destruction

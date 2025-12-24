@@ -9,6 +9,7 @@
 #define MM_PROT_WRITE   0x1
 #define MM_PROT_USER    0x2
 #define MM_PROT_EXEC    0x4
+#define MM_PROT_FULL    (MM_PROT_WRITE | MM_PROT_USER | MM_PROT_EXEC)
 
 void *memcpy(void *dest, const void *src, size_t n);
 
