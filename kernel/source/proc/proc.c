@@ -12,8 +12,6 @@ proc_t *proc_create(const char *name, bool is_kernel)
 {
     proc_t *proc = heap_alloc(sizeof(proc_t));
 
-    proc->fd_table = heap_alloc(sizeof(fd_table_t));
-
     *proc = (proc_t) {
         .pid = next_pid,
         .name = strdup(name),
@@ -27,7 +25,7 @@ proc_t *proc_create(const char *name, bool is_kernel)
         .fd_table = proc->fd_table
     };
 
-    fd_table_init(proc->fd_table);
+    fd_table_init(&proc->fd_table);
 
     spinlock_acquire(&slock);
     next_pid++;

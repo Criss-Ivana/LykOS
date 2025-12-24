@@ -22,7 +22,7 @@ typedef struct proc
     vm_addrspace_t *as;
     list_t threads;
 
-    fd_table_t *fd_table;
+    fd_table_t fd_table;
 
     list_node_t proc_list_node;
     spinlock_t slock;
