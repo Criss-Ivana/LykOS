@@ -2,21 +2,28 @@
 
 #include <stddef.h>
 #include "fs/vfs.h"
+#include "sync/spinlock.h"
 
-#define MAX_FDS 16
+#define MAX_FD_COUNT 16
 
-typedef struct fd_entry {
+typedef struct fd_entry
+{
     vnode_t *vnode;
     size_t offset;
-} fd_entry_t;
+}
+fd_entry_t;
 
-typedef struct fd_table {
-    fd_entry_t fds[MAX_FDS];
-} fd_table_t;
+typedef struct fd_table
+{
+    fd_entry_t *fds;
+    size_t capacity;
+    spinlock_t lock;
+}
+fd_table_t;
 
 void fd_table_init(fd_table_t *table);
 
-int fd_alloc(fd_table_t *table, vnode_t *vnode);
+bool fd_alloc(fd_table_t *table, vnode_t *vnode, int *fd);
 
 void fd_free(fd_table_t *table, int fd);
 
