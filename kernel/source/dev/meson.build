@@ -1,3 +1,5 @@
+subdir('acpi')
+
 c_files += files(
-    'acpi.c',
+    'device.c',
 )
