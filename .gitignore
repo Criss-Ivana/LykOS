@@ -1,5 +1,13 @@
+# Chariot
 .chariot-cache
+.chariot-overrides
+
+# Editors
 .clangd
 .vscode
 
+# Qemu
 qemu
+
+# Local playground (intentionally untracked)
+test
