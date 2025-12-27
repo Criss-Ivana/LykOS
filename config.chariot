@@ -1,5 +1,7 @@
 @option "arch" = [ "x86_64" "aarch64"]
 
+@import "recipes/**/*.chariot"
+
 source/kernel {
     url: "kernel"
     type: "local"
