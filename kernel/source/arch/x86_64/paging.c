@@ -1,5 +1,6 @@
 #include "arch/paging.h"
 
+#include "assert.h"
 #include "hhdm.h"
 #include "mm/heap.h"
 #include "mm/mm.h"
@@ -21,21 +22,31 @@ struct arch_paging_map
     pte_t *pml4;
 };
 
-static uint64_t translate_prot(int prot)
+static int translate_prot(int prot)
 {
-    uint64_t pte_prot = 0;
+    uint64_t pteprot = 0;
 
     if (prot & MM_PROT_WRITE)
-        pte_prot |= PTE_WRITE;
+        pteprot |= PTE_WRITE;
     if (prot & MM_PROT_USER)
-        pte_prot |= PTE_USER;
+        pteprot |= PTE_USER;
     if (!(prot & MM_PROT_EXEC))
-        pte_prot |= PTE_NX;
+        pteprot |= PTE_NX;
 
-    return pte_prot;
+    return pteprot;
 }
 
 // Mapping and unmapping
+
+static inline uint64_t hh_user_flag(bool hh)
+{
+    return hh ? PTE_USER : 0;
+}
+
+static inline uint64_t hh_leaf_flags(bool hh)
+{
+    return hh ? (PTE_USER | PTE_GLOBAL) : 0;
+}
 
 int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t size, int prot)
 {
@@ -44,12 +55,13 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
     uint64_t pml2e = (vaddr >> 21) & 0x1FF;
     uint64_t pml1e = (vaddr >> 12) & 0x1FF;
 
-    pte_t *pml4 = map->pml4;
-    pte_t *pml3;
-    pte_t *pml2;
-    pte_t *pml1;
+    pte_t *pml4 = map->pml4, *pml3, *pml2, *pml1;
 
-    uint64_t _prot = translate_prot(prot);
+    prot = translate_prot(prot);
+    bool hh = vaddr >= HHDM; // Is higher half?
+
+    // User perms must be set only in lower half.
+    ASSERT(!(prot & PTE_USER) || !hh);
 
     // PML4 -> PML3
     if (pml4[pml4e] & PTE_PRESENT)
@@ -59,13 +71,13 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
         uintptr_t phys = pm_alloc(0);
         pml3 = (pte_t *)(phys + HHDM);
         memset(pml3, 0, 0x1000);
-        pml4[pml4e] = phys | PTE_PRESENT | PTE_WRITE | PTE_USER;
+        pml4[pml4e] = phys | PTE_PRESENT | PTE_WRITE | hh_user_flag(hh);
     }
 
     // 1 GiB page
     if (size == 1 * GIB)
     {
-        pml3[pml3e] = paddr | _prot | PTE_PRESENT | PTE_HUGE;
+        pml3[pml3e] = paddr | prot | PTE_PRESENT | PTE_HUGE | hh_leaf_flags(hh);
         return 0;
     }
 
@@ -77,13 +89,13 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
         uintptr_t phys = pm_alloc(0);
         pml2 = (pte_t *)(phys + HHDM);
         memset(pml2, 0, 0x1000);
-        pml3[pml3e] = phys | PTE_PRESENT | PTE_WRITE | PTE_USER;
+        pml3[pml3e] = phys | PTE_PRESENT | PTE_WRITE | hh_user_flag(hh);
     }
 
     // 2 MiB page
     if (size == 2 * MIB)
     {
-        pml2[pml2e] = paddr | _prot | PTE_PRESENT | PTE_HUGE;
+        pml2[pml2e] = paddr | prot | PTE_PRESENT | PTE_HUGE | hh_leaf_flags(hh);
         return 0;
     }
 
@@ -95,11 +107,11 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
         uintptr_t phys = pm_alloc(0);
         pml1 = (pte_t *)(phys + HHDM);
         memset(pml1, 0, 0x1000);
-        pml2[pml2e] = phys | PTE_PRESENT | PTE_WRITE | PTE_USER;
+        pml2[pml2e] = phys | PTE_PRESENT | PTE_WRITE | hh_user_flag(hh);
     }
 
     // 4 KiB page
-    pml1[pml1e] = paddr | _prot | PTE_PRESENT | PTE_USER;
+    pml1[pml1e] = paddr | prot | PTE_PRESENT | hh_leaf_flags(hh);
     return 0;
 }
 
