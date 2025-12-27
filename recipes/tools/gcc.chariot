@@ -1,9 +1,15 @@
+// GCC
+
 source/gcc_host {
     url: "https://ftp.gnu.org/gnu/gcc/gcc-15.2.0/gcc-15.2.0.tar.gz"
     b2sum: "05248887c7dba27ea7ad27d59079668b47b477fea1ee4844d37546c0152a66b2dc9ebf766493bccc2c12ad990e92623417007bdc4d82f8e7e97096f3f8e6dec6"
     type: "tar.gz"
     patch: "patches/gcc-host.diff"
-    dependencies: [ source/libtool tool/pkgconf tool/reconfigure collection/autotools_2.69 ]
+    dependencies: [
+        source/libtool
+        tool/pkgconf tool/reconfigure
+        collection/autotools_2.69
+    ]
     regenerate: <sh>
         ./contrib/download_prerequisites
 
@@ -17,7 +23,12 @@ source/gcc_host {
 }
 
 tool/gcc_bootstrap {
-    dependencies: [ %source/gcc_host *tool/binutils tool/pkgconf collection/autotools_2.69 package/mlibc_headers image/build-essential ]
+    dependencies: [
+        %source/gcc_host
+        tool/autoconf_archive *tool/binutils tool/pkgconf
+        collection/autotools_2.69
+        !package/mlibc_headers image/build-essential
+    ]
     configure: <sh>
         CFLAGS="-O2" CXXFLAGS="-O2" $SOURCES_DIR/gcc_host/configure \
             --prefix=$PREFIX \
@@ -43,7 +54,13 @@ tool/gcc_bootstrap {
 }
 
 tool/gcc {
-    dependencies: [ %source/gcc_host *tool/binutils tool/pkgconf collection/autotools_2.69 *package/mlibc_headers *package/mlibc image/build-essential ]
+    dependencies: [
+        %source/gcc_host
+        image/build-essential
+        tool/autoconf_archive *tool/binutils tool/pkgconf
+        collection/autotools_2.69
+        *package/mlibc_headers *package/mlibc
+    ]
     configure: <sh>
         CFLAGS="-O2" CXXFLAGS="-O2" $SOURCES_DIR/gcc_host/configure \
             --prefix=$PREFIX \

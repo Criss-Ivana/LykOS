@@ -1,3 +1,5 @@
+// Reconfigure
+
 tool/reconfigure {
     install: <sh>
         mkdir -p $INSTALL_DIR$PREFIX/bin

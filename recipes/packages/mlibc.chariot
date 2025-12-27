@@ -39,7 +39,7 @@ package/mlibc {
     ]
     configure: <sh>
         meson setup \
-            --cross-file $SOURCES_DIR/support/lykos.cross-file \
+            --cross-file $SOURCES_DIR/support/cross-files/lykos-x86_64.ini \
             --prefix=$PREFIX \
             --libdir=lib \
             --buildtype=debug \

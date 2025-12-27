@@ -1,3 +1,5 @@
+// Pkgconf
+
 source/pkgconf {
     url: "https://github.com/pkgconf/pkgconf/archive/refs/tags/pkgconf-2.4.3.tar.gz"
     b2sum: "031ae702ff002198c6ea700a4f7f73cf82f19be3827a448929334ebae5f972b0d973e2c43bd12b4a8a8e6d0c187a006fa36d5303b36b2965e1046b26f50a51e7"
@@ -9,7 +11,11 @@ source/pkgconf {
 }
 
 tool/pkgconf {
-    dependencies: [ source/pkgconf tool/autoconf tool/automake tool/libtool image/gcc-multilib ]
+    dependencies: [
+        source/pkgconf
+        image/gcc-multilib
+        tool/autoconf tool/automake tool/libtool
+    ]
     configure: <sh>
         $SOURCES_DIR/pkgconf/configure --prefix=$PREFIX
     </sh>
