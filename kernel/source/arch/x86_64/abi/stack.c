@@ -8,7 +8,7 @@ uintptr_t x86_64_abi_stack_setup(vm_addrspace_t *as, size_t stack_size, char **a
         as,
         0,
         stack_size,
-        MM_PROT_USER | MM_PROT_WRITE,
+        MM_PROT_FULL,
         VM_MAP_ANON | VM_MAP_POPULATE | VM_MAP_PRIVATE,
         NULL,
         0,

@@ -2,6 +2,13 @@
 
 @import "recipes/**/*.chariot"
 
+// Sources
+
+source/apps {
+    url: "apps"
+    type: "local"
+}
+
 source/kernel {
     url: "kernel"
     type: "local"
@@ -31,6 +38,31 @@ source/support {
 source/tools {
     url: "tools"
     type: "local"
+}
+
+//
+
+package/apps {
+    dependencies: [
+        source/apps source/support
+        image/meson
+        tool/gcc
+    ]
+    options: [ "arch" ]
+    configure: <sh>
+        meson setup \
+            --cross-file=$SOURCES_DIR/support/cross-files/lykos-$OPTION_arch.ini \
+            --prefix=$PREFIX \
+            $SOURCES_DIR/apps
+    </sh>
+    build: <sh>
+        ninja -j$PARALLELISM
+    </sh>
+    install: <sh>
+        DESTDIR=$INSTALL_DIR ninja install
+        install -d $INSTALL_DIR/boot/
+        install $INSTALL_DIR/usr/bin/* $INSTALL_DIR/boot/
+    </sh>
 }
 
 tool/ksym {
@@ -100,8 +132,8 @@ custom/kernel {
 
 custom/initrd {
     dependencies: [
-        package/modules
         source/initrd
+        package/apps package/modules
     ]
     build: <sh>
         cp -r $SOURCES_DIR/initrd .

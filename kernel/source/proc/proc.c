@@ -8,7 +8,7 @@ static uint64_t next_pid = 0;
 static list_t proc_list = LIST_INIT;
 static spinlock_t slock = SPINLOCK_INIT;
 
-proc_t *proc_create(const char *name, bool is_kernel)
+proc_t *proc_create(const char *name, bool user)
 {
     proc_t *proc = heap_alloc(sizeof(proc_t));
 
@@ -16,8 +16,8 @@ proc_t *proc_create(const char *name, bool is_kernel)
         .pid = next_pid,
         .name = strdup(name),
         .status = PROC_STATE_NEW,
-        .kernel = is_kernel,
-        .as = vm_kernel_as,
+        .user = user,
+        .as = user ? vm_addrspace_create() : vm_kernel_as,
         .threads = LIST_INIT,
         .proc_list_node = LIST_NODE_INIT,
         .slock = SPINLOCK_INIT,

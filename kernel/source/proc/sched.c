@@ -32,6 +32,7 @@ static void sched_preemt()
     thread_t *new = pick_next_thread();
     spinlock_release(&slock);
 
+    vm_addrspace_load(new->owner->as);
     arch_thread_context_switch(&old->context, &new->context);
 }
 
@@ -67,5 +68,6 @@ void sched_yield()
     thread_t *new = pick_next_thread();
     spinlock_release(&slock);
 
+    vm_addrspace_load(new->owner->as);
     arch_thread_context_switch(&old->context, &new->context);
 }

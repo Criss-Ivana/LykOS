@@ -1,3 +1,7 @@
+subdir('abi')
+subdir('devices')
+subdir('tables')
+
 as_files += files(
     'userspace.S',
 )
@@ -15,9 +19,6 @@ c_files += files(
     'paging.c',
     'serial.c',
     'syscall.c',
+    'tcb.c',
     'thread.c',
 )
-
-subdir('abi')
-subdir('devices')
-subdir('tables')

@@ -5,6 +5,8 @@
 #include "mod/ksym.h"
 #include "mod/module.h"
 #include "panic.h"
+#include "proc/exec.h"
+#include "proc/sched.h"
 #include "proc/smp.h"
 #include "utils/string.h"
 #include <stddef.h>
@@ -28,7 +30,11 @@ void kernel_main()
                 log(LOG_FATAL, "Root fs node doesnt exist");
             }
 
-            ustar_extract(bootreq_module.response->modules[i]->address, bootreq_module.response->modules[i]->size, root);
+            ustar_extract(
+                bootreq_module.response->modules[i]->address,
+                bootreq_module.response->modules[i]->size,
+                root
+            );
             break;
         }
     }
@@ -38,12 +44,29 @@ void kernel_main()
     ksym_init();
 
     vnode_t *test_module_file;
-    if (vfs_lookup("/boot/modules/test_module.o", 0, &test_module_file) == EOK && test_module_file->type == VREG)
+    if (vfs_lookup("/boot/modules/test_module.o", 0, &test_module_file) == EOK
+    &&  test_module_file->type == VREG)
     {
         module_t *mod;
         if (module_load(test_module_file, &mod) == EOK)
             mod->install();
     }
+
+    // Load init process
+
+    vnode_t *init_elf_file;
+    if (vfs_lookup("/boot/init", 0, &init_elf_file) == EOK
+    &&  test_module_file->type == VREG)
+    {
+        proc_t *init_proc;
+        int err = exec_load(init_elf_file, &init_proc);
+        if (err == EOK)
+            sched_enqueue(LIST_GET_CONTAINER(init_proc->threads.head, thread_t, proc_thread_list_node));
+        else
+            log(LOG_ERROR, "Failed to load init process! Error: %d", err);
+    }
+    else
+        log(LOG_WARN, "Init process not found at /boot/init");
 
     // Start other CPU cores and scheduler
 

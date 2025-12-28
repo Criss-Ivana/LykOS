@@ -154,7 +154,7 @@ int vm_map_vnode(vm_addrspace_t *as, uintptr_t vaddr, size_t length,
     spinlock_release(&as->slock);
 
     *out = vaddr;
-    return ENOSYS;
+    return EOK;
 }
 
 int vm_unmap(vm_addrspace_t *as, uintptr_t vaddr, size_t length)
@@ -202,7 +202,7 @@ size_t vm_copy_to(vm_addrspace_t *dest_as, uintptr_t dest, uintptr_t src, size_t
 
 // Map creation and destruction
 
-vm_addrspace_t *vm_map_create()
+vm_addrspace_t *vm_addrspace_create()
 {
     vm_addrspace_t *map = heap_alloc(sizeof(vm_addrspace_t));
     *map = (vm_addrspace_t) {
@@ -216,7 +216,7 @@ vm_addrspace_t *vm_map_create()
     return map;
 }
 
-void vm_map_destroy(vm_addrspace_t *as)
+void vm_addrspace_destroy(vm_addrspace_t *as)
 {
     vm_segment_t *seg = LIST_GET_CONTAINER(&as->segments, vm_segment_t, list_node);
     while (seg)
@@ -244,7 +244,7 @@ void vm_init()
 {
     arch_paging_init();
 
-    vm_kernel_as = vm_map_create();
+    vm_kernel_as = vm_addrspace_create();
     vm_kernel_as->limit_low = HHDM;
     vm_kernel_as->limit_high = ARCH_KERNEL_MAX_VIRT;
 

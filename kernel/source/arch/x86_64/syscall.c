@@ -21,8 +21,3 @@ void x86_64_syscall_init()
     // Disable interrupts (IF=0).
     x86_64_msr_write(X86_64_MSR_SFMASK, x86_64_msr_read(X86_64_MSR_SFMASK) | (1 << 9));
 }
-
-void arch_syscall_tcb_set(void *ptr)
-{
-    x86_64_msr_write(X86_64_MSR_FS_BASE, (uint64_t)ptr);
-}

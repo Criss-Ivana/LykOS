@@ -40,12 +40,12 @@ static int translate_prot(int prot)
 
 static inline uint64_t hh_user_flag(bool hh)
 {
-    return hh ? PTE_USER : 0;
+    return hh ? 0 : PTE_USER;
 }
 
 static inline uint64_t hh_leaf_flags(bool hh)
 {
-    return hh ? (PTE_USER | PTE_GLOBAL) : 0;
+    return hh ? 0 : (PTE_USER | PTE_GLOBAL);
 }
 
 int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t paddr, size_t size, int prot)
@@ -61,7 +61,7 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
     bool hh = vaddr >= HHDM; // Is higher half?
 
     // User perms must be set only in lower half.
-    ASSERT(!(prot & PTE_USER) || !hh);
+    ASSERT(hh ? !(prot & PTE_USER) : (prot & PTE_USER))
 
     // PML4 -> PML3
     if (pml4[pml4e] & PTE_PRESENT)

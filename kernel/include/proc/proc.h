@@ -16,7 +16,7 @@ typedef struct proc
 {
     size_t pid;
     const char *name;
-    bool kernel;
+    bool user;
 
     proc_status_t status;
     vm_addrspace_t *as;
