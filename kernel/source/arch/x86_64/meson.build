@@ -2,13 +2,10 @@ subdir('abi')
 subdir('devices')
 subdir('tables')
 
-as_files += files(
-    'userspace.S',
-)
-
 asm_files += files(
     'syscall.asm',
     'thread.asm',
+    'userspace.asm'
 )
 
 c_files += files(
