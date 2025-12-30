@@ -2,12 +2,14 @@
 
 #include <stddef.h>
 
+__attribute__((malloc))
 void *heap_alloc(size_t size);
 
 void heap_free_size(void *obj, size_t size);
 
 void heap_free(void *obj);
 
+__attribute__((malloc))
 void *heap_realloc(void *obj, size_t old_size, size_t new_size);
 
 __attribute__((unused))
