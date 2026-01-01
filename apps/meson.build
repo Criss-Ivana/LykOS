@@ -6,7 +6,6 @@ project(
 )
 
 add_project_link_arguments(
-    # '-nostartfiles',
     '-static',
     language: 'nasm',
 )
