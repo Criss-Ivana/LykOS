@@ -109,7 +109,7 @@ static int write(vnode_t *self, const void *buffer, uint64_t count, uint64_t off
         void *page = xa_get(&node->pages, page_idx);
         if (!page)
         {
-            page = (void*)(pm_alloc(0) + HHDM);
+            page = (void*)(pm_alloc(0)->addr + HHDM);
             xa_insert(&node->pages, page_idx, page);
         }
 

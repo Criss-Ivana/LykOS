@@ -15,6 +15,15 @@ void fd_table_init(fd_table_t *table)
     }
 }
 
+void fd_table_destroy(fd_table_t *table)
+{
+    spinlock_acquire(&table->lock);
+
+    heap_free(table->fds);
+
+    spinlock_release(&table->lock);
+}
+
 bool fd_alloc(fd_table_t *table, vnode_t *vnode, int *fd)
 {
     spinlock_acquire(&table->lock);

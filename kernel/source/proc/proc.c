@@ -34,3 +34,10 @@ proc_t *proc_create(const char *name, bool user)
 
     return proc;
 }
+
+void proc_kill(proc_t *proc)
+{
+    fd_table_destroy(&proc->fd_table);
+    vm_addrspace_destroy(proc->as);
+    heap_free(proc);
+}

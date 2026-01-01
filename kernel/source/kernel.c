@@ -5,7 +5,7 @@
 #include "mod/ksym.h"
 #include "mod/module.h"
 #include "panic.h"
-#include "proc/exec.h"
+#include "proc/init.h"
 #include "proc/sched.h"
 #include "proc/smp.h"
 #include "utils/string.h"
@@ -58,15 +58,14 @@ void kernel_main()
     if (vfs_lookup("/boot/init", 0, &init_elf_file) == EOK
     &&  test_module_file->type == VREG)
     {
-        proc_t *init_proc;
-        int err = exec_load(init_elf_file, &init_proc);
-        if (err == EOK)
+        proc_t *init_proc = init_load(init_elf_file);
+        if (init_proc)
             sched_enqueue(LIST_GET_CONTAINER(init_proc->threads.head, thread_t, proc_thread_list_node));
         else
-            log(LOG_ERROR, "Failed to load init process! Error: %d", err);
+            panic("Failed to load init process!");
     }
     else
-        log(LOG_WARN, "Init process not found at /boot/init");
+        panic("Init process not found!");
 
     // Start other CPU cores and scheduler
 

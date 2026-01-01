@@ -68,7 +68,7 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
         pml3 = (pte_t *)(PTE_ADDR_MASK(pml4[pml4e]) + HHDM);
     else
     {
-        uintptr_t phys = pm_alloc(0);
+        uintptr_t phys = pm_alloc(0)->addr;
         pml3 = (pte_t *)(phys + HHDM);
         memset(pml3, 0, 0x1000);
         pml4[pml4e] = phys | PTE_PRESENT | PTE_WRITE | hh_user_flag(hh);
@@ -86,7 +86,7 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
         pml2 = (pte_t *)(PTE_ADDR_MASK(pml3[pml3e]) + HHDM);
     else
     {
-        uintptr_t phys = pm_alloc(0);
+        uintptr_t phys = pm_alloc(0)->addr;
         pml2 = (pte_t *)(phys + HHDM);
         memset(pml2, 0, 0x1000);
         pml3[pml3e] = phys | PTE_PRESENT | PTE_WRITE | hh_user_flag(hh);
@@ -104,7 +104,7 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
         pml1 = (pte_t *)(PTE_ADDR_MASK(pml2[pml2e]) + HHDM);
     else
     {
-        uintptr_t phys = pm_alloc(0);
+        uintptr_t phys = pm_alloc(0)->addr;
         pml1 = (pte_t *)(phys + HHDM);
         memset(pml1, 0, 0x1000);
         pml2[pml2e] = phys | PTE_PRESENT | PTE_WRITE | hh_user_flag(hh);
@@ -167,7 +167,7 @@ static pte_t higher_half_entries[256];
 arch_paging_map_t *arch_paging_map_create()
 {
     arch_paging_map_t *map = heap_alloc(sizeof(arch_paging_map_t));
-    map->pml4 = (pte_t *)(pm_alloc(0) + HHDM);
+    map->pml4 = (pte_t *)(pm_alloc(0)->addr + HHDM);
     memset(map->pml4, 0, 0x1000);
 
     for (int i = 0; i < 256; i++)
@@ -195,7 +195,7 @@ void arch_paging_init()
 {
     for (int i = 0; i < 256; i++)
     {
-        pte_t *pml3 = (pte_t *)(pm_alloc(0) + HHDM);
+        pte_t *pml3 = (pte_t *)(pm_alloc(0)->addr + HHDM);
         memset(pml3, 0, 0x1000);
         higher_half_entries[i] = (pte_t)((uintptr_t)pml3 - HHDM) | PTE_PRESENT | PTE_WRITE | PTE_USER;
     }

@@ -146,7 +146,7 @@ int vm_map_vnode(vm_addrspace_t *as, uintptr_t vaddr, size_t length,
     for (size_t i = 0; i < length; i += ARCH_PAGE_GRAN)
     {
         // Fewer TLB entries/lookups are needed when zeroing via the HHDM (it is mapped with large pages).
-        uintptr_t phys = pm_alloc(0);
+        uintptr_t phys = pm_alloc(0)->addr;
         memset((void *)(phys + HHDM), 0, ARCH_PAGE_GRAN);
         arch_paging_map_page(as->page_map, vaddr + i, phys, ARCH_PAGE_GRAN, prot);
     }
@@ -179,7 +179,7 @@ int vm_unmap(vm_addrspace_t *as, uintptr_t vaddr, size_t length)
 
 // Utils
 
-size_t vm_copy_to(vm_addrspace_t *dest_as, uintptr_t dest, uintptr_t src, size_t count)
+size_t vm_copy_to(vm_addrspace_t *dest_as, uintptr_t dest, void *src, size_t count)
 {
     size_t i = 0;
     while (i < count)
@@ -193,9 +193,30 @@ size_t vm_copy_to(vm_addrspace_t *dest_as, uintptr_t dest, uintptr_t src, size_t
         }
 
         size_t len = MIN(count - i, ARCH_PAGE_GRAN - offset);
-        memcpy((void*)(phys + HHDM), (void *)src, len);
+        memcpy((void*)(phys + HHDM), src, len);
         i += len;
-        src += len;
+        src = (void *)((uintptr_t)src + len);
+    }
+    return i;
+}
+
+bool vm_zero_out(vm_addrspace_t *dest_as, uintptr_t dest, void *src, size_t count)
+{
+    size_t i = 0;
+    while (i < count)
+    {
+        size_t offset = (dest + i) % ARCH_PAGE_GRAN;
+        uintptr_t phys;
+        if(!arch_paging_vaddr_to_paddr(dest_as->page_map, dest + i, &phys))
+        {
+            // TODO: Handle this
+            panic("Not mapped!");
+        }
+
+        size_t len = MIN(count - i, ARCH_PAGE_GRAN - offset);
+        memcpy((void*)(phys + HHDM), src, len);
+        i += len;
+        src = (void *)((uintptr_t)src + len);
     }
     return i;
 }

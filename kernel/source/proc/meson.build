@@ -1,6 +1,6 @@
 c_files += files(
-    'exec.c',
     'fd.c',
+    'init.c',
     'proc.c',
     'sched.c',
     'smp.c',

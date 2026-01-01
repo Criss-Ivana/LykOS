@@ -10,7 +10,7 @@
 
 static kmem_slab_t *cache_make_slab(kmem_cache_t *cache)
 {
-    kmem_slab_t *slab = (kmem_slab_t *)(pm_alloc(0) + HHDM);
+    kmem_slab_t *slab = (kmem_slab_t *)(pm_alloc(0)->addr + HHDM);
 
     slab->cache = cache;
     slab->freelist = NULL;
@@ -48,7 +48,7 @@ static void *cache_alloc_from_slabs(kmem_cache_t *cache)
 
 static kmem_magazine_t *cache_make_magazine(kmem_cache_t *cache, bool populate)
 {
-    kmem_magazine_t *mag = (kmem_magazine_t *)(pm_alloc(0) + HHDM);
+    kmem_magazine_t *mag = (kmem_magazine_t *)(pm_alloc(0)->addr + HHDM);
 
     spinlock_acquire(&cache->slabs_lock);
     for (size_t i = 0; i < MAG_SIZE; i++)
@@ -136,7 +136,7 @@ void kmem_free_cache(kmem_cache_t *cache, void *obj)
 
 kmem_cache_t *kmem_new_cache(const char *name, size_t size)
 {
-    kmem_cache_t *cache = (kmem_cache_t *)(pm_alloc(0) + HHDM);
+    kmem_cache_t *cache = (kmem_cache_t *)(pm_alloc(0)->addr + HHDM);
 
     *cache = (kmem_cache_t) {
         .name = name,

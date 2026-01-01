@@ -58,7 +58,7 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
         l1 = (pte_t *)(PTE_ADDR_MASK(l0[l0e]) + HHDM);
     else
     {
-        uintptr_t phys = pm_alloc(0);
+        uintptr_t phys = pm_alloc(0)->addr;
         l1 = (pte_t *)(phys + HHDM);
         memset(l1, 0, 0x1000);
         l0[l0e] = phys | PTE_VALID | PTE_TABLE;
@@ -76,7 +76,7 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
         l2 = (pte_t *)(PTE_ADDR_MASK(l1[l1e]) + HHDM);
     else
     {
-        uintptr_t phys = pm_alloc(0);
+        uintptr_t phys = pm_alloc(0)->addr;
         l2 = (pte_t *)(phys + HHDM);
         memset(l2, 0, 0x1000);
         l1[l1e] = phys | PTE_VALID | PTE_TABLE;
@@ -94,7 +94,7 @@ int arch_paging_map_page(arch_paging_map_t *map, uintptr_t vaddr, uintptr_t padd
         l3 = (pte_t *)(PTE_ADDR_MASK(l2[l2e]) + HHDM);
     else
     {
-        uintptr_t phys = pm_alloc(0);
+        uintptr_t phys = pm_alloc(0)->addr;
         l3 = (pte_t *)(phys + HHDM);
         memset(l3, 0, 0x1000);
         l2[l2e] = phys | PTE_VALID | PTE_TABLE;
@@ -161,7 +161,7 @@ bool ttbr1_loaded = false;
 arch_paging_map_t *arch_paging_map_create()
 {
     arch_paging_map_t *map = heap_alloc(sizeof(arch_paging_map_t));
-    map->pml4[0] = (pte_t *)(pm_alloc(0) + HHDM);
+    map->pml4[0] = (pte_t *)(pm_alloc(0)->addr + HHDM);
     memset(map->pml4, 0, 0x1000);
     map->pml4[1] = higher_half_pml4;
 
@@ -202,6 +202,6 @@ void arch_paging_map_load(arch_paging_map_t *map)
 
 void arch_paging_init()
 {
-    higher_half_pml4 = (pte_t *)(pm_alloc(0) + HHDM);
+    higher_half_pml4 = (pte_t *)(pm_alloc(0)->addr + HHDM);
     memset(higher_half_pml4, 0, 0x1000);
 }

@@ -104,7 +104,7 @@ void arch_thread_context_init(arch_thread_context_t *context, vm_addrspace_t *as
         char *argv[] = { "test", NULL };
         char *envp[] = { NULL };
 
-        context->kernel_stack = pm_alloc(0) + HHDM + ARCH_PAGE_GRAN;
+        context->kernel_stack = pm_alloc(0)->addr + HHDM + ARCH_PAGE_GRAN;
         context->rsp = (context->kernel_stack - sizeof(arch_thread_init_stack_kernel_t)) & (~0xF); // align as 16
 
         arch_thread_init_stack_user_t *init_stack = (arch_thread_init_stack_user_t *)context->rsp;
@@ -116,14 +116,14 @@ void arch_thread_context_init(arch_thread_context_t *context, vm_addrspace_t *as
     }
     else
     {
-        context->kernel_stack = pm_alloc(0) + HHDM + ARCH_PAGE_GRAN;
+        context->kernel_stack = pm_alloc(0)->addr + HHDM + ARCH_PAGE_GRAN;
         context->rsp = context->kernel_stack - sizeof(arch_thread_init_stack_kernel_t);
         memset((void *)context->rsp, 0, sizeof(arch_thread_init_stack_kernel_t));
         ((arch_thread_init_stack_kernel_t *)context->rsp)->entry = entry;
     }
 
     uint8_t order = pm_pagecount_to_order(CEIL(x86_64_fpu_area_size, ARCH_PAGE_GRAN) / ARCH_PAGE_GRAN);
-    context->fpu_area = (void*)(pm_alloc(order) + HHDM);
+    context->fpu_area = (void*)(pm_alloc(order)->addr + HHDM);
     memset(context->fpu_area, 0, x86_64_fpu_area_size);
 }
 

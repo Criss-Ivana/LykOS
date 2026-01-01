@@ -1,11 +1,9 @@
-#include "proc/exec.h"
+#include "proc/init.h"
 
-#include "assert.h"
-#include "hhdm.h"
+#include "arch/types.h"
 #include "log.h"
 #include "mm/heap.h"
 #include "mm/mm.h"
-#include "mm/pm.h"
 #include "mm/vm.h"
 #include "proc/proc.h"
 #include "proc/thread.h"
@@ -14,9 +12,9 @@
 #include <stddef.h>
 #include <stdint.h>
 
-int exec_load(vnode_t *file, proc_t **out)
+proc_t *init_load(vnode_t *file)
 {
-    log(LOG_INFO, "Loading executable `%s`.", file->name);
+    log(LOG_INFO, "Loading init process...");
 
     // Variable to be used as output parameter for file read/write operations.
     uint64_t count;
@@ -24,7 +22,10 @@ int exec_load(vnode_t *file, proc_t **out)
     Elf64_Ehdr ehdr;
     if (vfs_read(file, &ehdr, sizeof(Elf64_Ehdr), 0, &count) != EOK
     ||  count != sizeof(Elf64_Ehdr))
+    {
         log(LOG_ERROR, "Could not read file header!");
+        return NULL;
+    }
 
     if (memcmp(ehdr.e_ident, "\x7F""ELF", 4)
     ||  ehdr.e_ident[EI_CLASS]   != ELFCLASS64
@@ -44,13 +45,20 @@ int exec_load(vnode_t *file, proc_t **out)
     if (vfs_read(file, ph_table, ehdr.e_phentsize * ehdr.e_phnum, ehdr.e_phoff, &count) != EOK
     ||  count != ehdr.e_phentsize * ehdr.e_phnum)
     {
-        // TODO: cleanup
         log(LOG_ERROR, "Could not load the program headers!");
+        return NULL;
     }
 
     for (size_t i = 0; i < ehdr.e_phnum; i++)
     {
         Elf64_Phdr *ph = &ph_table[i];
+
+        CLEANUP uint8_t *buf = heap_alloc(1024);
+        if (!buf)
+        {
+            log(LOG_ERROR, "Could not allocate a page for the file IO buffer.");
+            return NULL;
+        }
 
         if (ph->p_type == PT_LOAD && ph->p_memsz != 0)
         {
@@ -69,32 +77,33 @@ int exec_load(vnode_t *file, proc_t **out)
                 0,
                 &out
             );
-
             if (err != EOK || out != start)
             {
-                // TODO: delete proc
                 log(LOG_ERROR, "Could not map the program headers!");
-                return err;
+                return NULL;
             }
 
-            // TODO: cleanup
-            ASSERT(pm_order_to_pagecount(10) * ARCH_PAGE_GRAN >= ph->p_filesz);
-            uintptr_t buf = pm_alloc(10);
+            if (ph->p_filesz == 0)
+                continue;
 
-            if (vfs_read(file, (void*)(buf + HHDM), ph->p_filesz, ph->p_offset, &count) != EOK
-            || count != ph->p_filesz)
+            size_t read_bytes = 0;
+            while (read_bytes < ph->p_filesz)
             {
-                // TODO: cleanup
-                log(LOG_ERROR, "Could not map the program headers!");
-                return err;
-            }
-            vm_copy_to(proc->as, ph->p_vaddr, buf + HHDM, ph->p_filesz);
+                size_t to_copy = MIN(ph->p_filesz - read_bytes, ARCH_PAGE_GRAN);
 
-            pm_free(buf);
+                if (vfs_read(file, buf, to_copy, ph->p_offset + read_bytes, &count) != EOK
+                ||  count != to_copy)
+                {
+                    log(LOG_ERROR, "Could not map the program headers!");
+                    return NULL;
+                }
+                vm_copy_to(proc->as, ph->p_vaddr + read_bytes, buf, to_copy);
+
+                read_bytes += to_copy;
+            }
         }
     }
 
     thread_create(proc, ehdr.e_entry);
-    *out = proc;
-    return EOK;
+    return proc;
 }

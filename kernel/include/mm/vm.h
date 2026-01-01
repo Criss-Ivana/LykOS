@@ -63,7 +63,7 @@ int vm_unmap(vm_addrspace_t *as, uintptr_t vaddr, size_t length);
 
 // Utils
 
-size_t vm_copy_to(vm_addrspace_t *dest_as, uintptr_t dest, uintptr_t src, size_t count);
+size_t vm_copy_to(vm_addrspace_t *dest_as, uintptr_t dest, void *src, size_t count);
 
 // Address space creation and destruction
 

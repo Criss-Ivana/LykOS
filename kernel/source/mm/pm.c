@@ -8,21 +8,10 @@
 #include "mm/mm.h"
 #include "panic.h"
 #include "sync/spinlock.h"
-#include "utils/list.h"
 
-typedef struct
-{
-    uintptr_t addr;
-    uint8_t order;
-    bool free;
-
-    list_node_t list_elem;
-}
-block_t;
-
-static block_t *blocks;
+static page_t *blocks;
 static size_t block_count;
-static list_t levels[PM_MAX_BLOCK_ORDER + 1];
+static list_t levels[PM_MAX_PAGE_ORDER + 1];
 static spinlock_t slock = SPINLOCK_INIT;
 
 uint8_t pm_pagecount_to_order(size_t pages)
@@ -37,7 +26,12 @@ size_t pm_order_to_pagecount(uint8_t order)
     return (size_t)1 << order;
 }
 
-uintptr_t pm_alloc(uint8_t order)
+page_t *pm_phys_to_page(uintptr_t phys)
+{
+    return &blocks[phys / ARCH_PAGE_GRAN];
+}
+
+page_t *pm_alloc(uint8_t order)
 {
     spinlock_acquire(&slock);
 
@@ -45,47 +39,44 @@ uintptr_t pm_alloc(uint8_t order)
     while (list_is_empty(&levels[i]))
     {
         i++;
-        if (i > PM_MAX_BLOCK_ORDER)
+        if (i > PM_MAX_PAGE_ORDER)
             return 0;
     }
 
-    block_t *block = LIST_GET_CONTAINER(levels[i].head, block_t, list_elem);
+    page_t *page = LIST_GET_CONTAINER(levels[i].head, page_t, list_elem);
     list_remove(&levels[i], levels[i].head);
 
     for (; i > order; i--)
     {
-        // Right block.
-        size_t r_idx = (block->addr / ARCH_PAGE_GRAN) ^ pm_order_to_pagecount(i - 1);
-        block_t *right = &blocks[r_idx];
+        // Right page.
+        size_t r_idx = (page->addr / ARCH_PAGE_GRAN) ^ pm_order_to_pagecount(i - 1);
+        page_t *right = &blocks[r_idx];
         right->order = i - 1;
         right->free = true;
         list_append(&levels[i - 1], &right->list_elem);
     }
 
-    block->order = order;
-    block->free = false;
+    page->order = order;
+    page->free = false;
 
     spinlock_release(&slock);
-    return block->addr;
+    return page;
 }
 
-void pm_free(uintptr_t addr)
+void pm_free(page_t *block)
 {
-    ASSERT(addr < HHDM);
-
     spinlock_acquire(&slock);
 
-    size_t idx = addr / ARCH_PAGE_GRAN;
-    block_t *block = &blocks[idx];
+    size_t idx = block->addr / ARCH_PAGE_GRAN;
     uint8_t i = block->order;
 
-    while (i < PM_MAX_BLOCK_ORDER)
+    while (i < PM_MAX_PAGE_ORDER)
     {
         size_t b_idx = idx ^ pm_order_to_pagecount(i);
         if (b_idx >= block_count)
             break;
 
-        block_t *buddy = &blocks[b_idx];
+        page_t *buddy = &blocks[b_idx];
         if (buddy->free == true && buddy->order == i)
         {
             list_remove(&levels[buddy->order], &buddy->list_elem);
@@ -114,7 +105,7 @@ void pm_init()
     || bootreq_memmap.response->entry_count == 0)
         panic("Invalid memory map provided by the bootloader!");
 
-    for (int i = 0; i <= PM_MAX_BLOCK_ORDER; i++)
+    for (int i = 0; i <= PM_MAX_PAGE_ORDER; i++)
         levels[i] = LIST_INIT;
 
     // Find the last usable memory entry to determine how many blocks our pmm
@@ -144,18 +135,19 @@ void pm_init()
     {
         struct limine_memmap_entry *e = bootreq_memmap.response->entries[i];
         if (e->type == LIMINE_MEMMAP_USABLE)
-            if (e->length >= block_count * sizeof(block_t))
+            if (e->length >= block_count * sizeof(page_t))
             {
-                blocks = (block_t *)(e->base + HHDM);
+                blocks = (page_t *)(e->base + HHDM);
                 break;
             }
     }
 
     // Set each block's address and mark them as used for now.
-    memset(blocks, 0, sizeof(block_t) * block_count);
     for (size_t i = 0; i < block_count; i++)
-        blocks[i] = (block_t) {
+        blocks[i] = (page_t) {
             .addr = ARCH_PAGE_GRAN * i,
+            .mapcount = 0,
+            .order = 0,
             .free = false,
             .list_elem = LIST_NODE_INIT
         };
@@ -168,12 +160,12 @@ void pm_init()
         if (e->type != LIMINE_MEMMAP_USABLE)
             continue;
 
-        uint8_t order = PM_MAX_BLOCK_ORDER;
+        uint8_t order = PM_MAX_PAGE_ORDER;
         uintptr_t addr = e->base;
         // We don't want to mark as free the pages that contain the pmm block array.
         // Remember the block array is placed at the start of a free region.
         if (addr == (uintptr_t)blocks - HHDM)
-            addr += (block_count * sizeof(block_t) + (ARCH_PAGE_GRAN - 1)) / ARCH_PAGE_GRAN * ARCH_PAGE_GRAN;
+            addr += (block_count * sizeof(page_t) + (ARCH_PAGE_GRAN - 1)) / ARCH_PAGE_GRAN * ARCH_PAGE_GRAN;
         while (addr != e->base + e->length)
         {
             size_t span = pm_order_to_pagecount(order) * ARCH_PAGE_GRAN;
@@ -191,7 +183,7 @@ void pm_init()
 
             addr += span;
 
-            order = PM_MAX_BLOCK_ORDER;
+            order = PM_MAX_PAGE_ORDER;
         }
     }
 

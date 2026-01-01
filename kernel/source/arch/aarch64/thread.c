@@ -48,7 +48,7 @@ extern __attribute__((naked)) void __thread_context_switch(arch_thread_context_t
 
 void arch_thread_context_init(arch_thread_context_t *context, bool user, uintptr_t entry)
 {
-    context->stack_base = pm_alloc(0) + HHDM + ARCH_PAGE_GRAN;
+    context->stack_base = pm_alloc(0)->addr + HHDM + ARCH_PAGE_GRAN;
     context->rsp = context->stack_base - sizeof(thread_init_stack_kernel_t);
     memset((void *)context->rsp, 0, sizeof(thread_init_stack_kernel_t));
     ((thread_init_stack_kernel_t *)context->rsp)->entry = entry;
