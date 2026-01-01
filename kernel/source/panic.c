@@ -10,7 +10,7 @@ void panic(const char *format, ...)
     log(LOG_FATAL, "PANIC");
     va_list vargs;
     va_start(vargs);
-    vlog(LOG_FATAL, NULL, format, vargs);
+    vlog(LOG_FATAL, "PANIC", format, vargs);
     va_end(vargs);
 
     while (true)

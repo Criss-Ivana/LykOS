@@ -3,14 +3,17 @@
 #include "gfx/simplefb.h"
 #include "mm/mm.h"
 
-static size_t line = 0;
+static size_t line, col = 0;
 
 #define MAX_COLS (simplefb_width / FONT_WIDTH)
 #define MAX_ROWS (simplefb_height / FONT_HEIGHT)
 
-void console_write(const char *str)
+static void goto_next_line()
 {
-    if (line == MAX_ROWS - 1) // scroll
+    line++;
+    col = 0;
+
+    if (line == MAX_ROWS - 1)
     {
         memcpy((void *)simplefb_addr,
                (void *)(simplefb_addr + simplefb_pitch * FONT_HEIGHT),
@@ -20,10 +23,22 @@ void console_write(const char *str)
                simplefb_pitch * FONT_HEIGHT);
         line = MAX_ROWS - 2;
     }
+}
 
-    size_t i = 0;
+void console_write(uint32_t color, const char *str)
+{
     while(*str)
-        draw_char(i++ * FONT_WIDTH, line * FONT_HEIGHT, *str++, 0xFFFFFF);
+    {
+        if (*str == '\n')
+        {
+            goto_next_line();
+            str++;
+            continue;
+        }
 
-    line++;
+        draw_char(col * FONT_WIDTH, line * FONT_HEIGHT, *str++, color);
+        col++;
+        if (col >= MAX_COLS)
+            goto_next_line();
+    }
 }
