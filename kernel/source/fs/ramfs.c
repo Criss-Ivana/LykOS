@@ -37,8 +37,8 @@ vfs_ops_t ramfs_ops = {
     .get_root = ramfs_get_root
 };
 
-static int read  (vnode_t *self, void *buffer, uint64_t count, uint64_t offset, uint64_t *out);
-static int write (vnode_t *self, const void *buffer, uint64_t count, uint64_t offset, uint64_t *out);
+static int read  (vnode_t *self, void *buffer, uint64_t offset, uint64_t count, uint64_t *out);
+static int write (vnode_t *self, const void *buffer, uint64_t offset, uint64_t count, uint64_t *out);
 static int lookup(vnode_t *self, const char *name, vnode_t **out);
 static int create(vnode_t *self, const char *name, vnode_type_t t, vnode_t **out);
 
@@ -58,7 +58,7 @@ static vnode_t *ramfs_get_root(vfs_t *self)
 
 // Node Operations
 
-static int read(vnode_t *self, void *buffer, uint64_t count, uint64_t offset, uint64_t *out)
+static int read(vnode_t *self, void *buffer, uint64_t offset, uint64_t count, uint64_t *out)
 {
     ramfs_node_t *node = (ramfs_node_t *)self;
 
@@ -89,7 +89,7 @@ static int read(vnode_t *self, void *buffer, uint64_t count, uint64_t offset, ui
     return EOK;
 }
 
-static int write(vnode_t *self, const void *buffer, uint64_t count, uint64_t offset, uint64_t *out)
+static int write(vnode_t *self, const void *buffer, uint64_t offset, uint64_t count, uint64_t *out)
 {
     ramfs_node_t *node = (ramfs_node_t *)self;
 
@@ -172,7 +172,7 @@ static int create(vnode_t *self, const char *name, vnode_type_t t, vnode_t **out
             .size = 0,
             .ops  = &ramfs_node_ops,
             .inode = child,
-            .ref_count = 1
+            .refcount = 1
         },
         .parent = current,
         .children = LIST_INIT,
@@ -204,7 +204,7 @@ vfs_t *ramfs_create()
             .size = 0,
             .ops  = &ramfs_node_ops,
             .inode = &ramfs_root,
-            .ref_count = 1
+            .refcount = 1
         },
         .parent = ramfs_root,
         .children = LIST_INIT,

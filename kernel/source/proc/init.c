@@ -20,7 +20,7 @@ proc_t *init_load(vnode_t *file)
     uint64_t count;
 
     Elf64_Ehdr ehdr;
-    if (vfs_read(file, &ehdr, sizeof(Elf64_Ehdr), 0, &count) != EOK
+    if (vfs_read(file, &ehdr, 0, sizeof(Elf64_Ehdr), &count) != EOK
     ||  count != sizeof(Elf64_Ehdr))
     {
         log(LOG_ERROR, "Could not read file header!");
@@ -42,7 +42,7 @@ proc_t *init_load(vnode_t *file)
     proc_t *proc = proc_create(file->name, true);
 
     CLEANUP Elf64_Phdr *ph_table = heap_alloc(ehdr.e_phentsize * ehdr.e_phnum);
-    if (vfs_read(file, ph_table, ehdr.e_phentsize * ehdr.e_phnum, ehdr.e_phoff, &count) != EOK
+    if (vfs_read(file, ph_table, ehdr.e_phoff, ehdr.e_phentsize * ehdr.e_phnum, &count) != EOK
     ||  count != ehdr.e_phentsize * ehdr.e_phnum)
     {
         log(LOG_ERROR, "Could not load the program headers!");
@@ -91,13 +91,13 @@ proc_t *init_load(vnode_t *file)
             {
                 size_t to_copy = MIN(ph->p_filesz - read_bytes, ARCH_PAGE_GRAN);
 
-                if (vfs_read(file, buf, to_copy, ph->p_offset + read_bytes, &count) != EOK
+                if (vfs_read(file, buf, ph->p_offset + read_bytes, to_copy, &count) != EOK
                 ||  count != to_copy)
                 {
                     log(LOG_ERROR, "Could not map the program headers!");
                     return NULL;
                 }
-                vm_copy_to(proc->as, ph->p_vaddr + read_bytes, buf, to_copy);
+                vm_copy_to_user(proc->as, ph->p_vaddr + read_bytes, buf, to_copy);
 
                 read_bytes += to_copy;
             }

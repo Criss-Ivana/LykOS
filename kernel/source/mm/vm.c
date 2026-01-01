@@ -177,9 +177,9 @@ int vm_unmap(vm_addrspace_t *as, uintptr_t vaddr, size_t length)
     return EOK;
 }
 
-// Utils
 
-size_t vm_copy_to(vm_addrspace_t *dest_as, uintptr_t dest, void *src, size_t count)
+
+size_t vm_copy_to_user(vm_addrspace_t *dest_as, uintptr_t dest, void *src, size_t count)
 {
     size_t i = 0;
     while (i < count)
@@ -200,7 +200,28 @@ size_t vm_copy_to(vm_addrspace_t *dest_as, uintptr_t dest, void *src, size_t cou
     return i;
 }
 
-bool vm_zero_out(vm_addrspace_t *dest_as, uintptr_t dest, void *src, size_t count)
+size_t vm_copy_from_user(vm_addrspace_t *src_as, void *dest, uintptr_t src, size_t count)
+{
+    size_t i = 0;
+    while (i < count)
+    {
+        size_t offset = (src + i) % ARCH_PAGE_GRAN;
+        uintptr_t phys;
+        if (!arch_paging_vaddr_to_paddr(src_as->page_map, src + i, &phys))
+        {
+            // TODO: Handle this
+            panic("Not mapped!");
+        }
+
+        size_t len = MIN(count - i, ARCH_PAGE_GRAN - offset);
+        memcpy(dest, (void *)(phys + HHDM), len);
+        i += len;
+        dest = (void *)((uintptr_t)dest + len);
+    }
+    return i;
+}
+
+size_t vm_zero_out_user(vm_addrspace_t *dest_as, uintptr_t dest, void *src, size_t count)
 {
     size_t i = 0;
     while (i < count)

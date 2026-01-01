@@ -3,6 +3,7 @@
 #include "uapi/errno.h"
 #include "utils/list.h"
 #include <stdint.h>
+#include <stdatomic.h>
 
 #define VFS_MAX_NAME_LEN 128
 #define VNODE_MAX_NAME_LEN 128
@@ -60,8 +61,40 @@ struct vnode
     vnode_ops_t *ops;
     void *inode;
 
-    size_t ref_count;
+    atomic_int refcount;
 };
+
+/**
+ * @brief Increment vnode reference count.
+ *
+ * Acquires an additional reference to the vnode.
+ * This does not imply ownership transfer; the caller must already
+ * hold a valid reference.
+ *
+ * @param vn Pointer to the vnode.
+ */
+static inline void vnode_ref(vnode_t *vn)
+{
+    atomic_fetch_add_explicit(&vn->refcount, 1, memory_order_relaxed);
+}
+
+/**
+ * @brief Decrement vnode reference count and deallocate if it reaches zero.
+ *
+ * Releases a reference to the vnode. When the reference count drops to zero,
+ * the vnode deallocates itself.
+ *
+ * @param vn Pointer to the vnode.
+ */
+static inline bool vnode_unref(vnode_t *vn)
+{
+    if (atomic_fetch_sub_explicit(&vn->refcount, 1, memory_order_acq_rel) == 1)
+    {
+        // TODO: run vnode destructor
+        return true;
+    }
+    return false;
+}
 
 struct vnode_ops
 {
@@ -79,8 +112,8 @@ struct vnode_ops
  * Veneer layer.
 */
 
-[[nodiscard]] int vfs_read(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_read);
-[[nodiscard]] int vfs_write(vnode_t *vn, void *buffer, uint64_t len, uint64_t offset, uint64_t *out_bytes_written);
+[[nodiscard]] int vfs_read(vnode_t *vn, void *buffer, uint64_t offset, uint64_t count, uint64_t *out_bytes_read);
+[[nodiscard]] int vfs_write(vnode_t *vn, void *buffer, uint64_t offset, uint64_t count, uint64_t *out_bytes_written);
 [[nodiscard]] int vfs_lookup(const char *path, int flags, vnode_t **out);
 [[nodiscard]] int vfs_create(vnode_t *vn, const char *name, vnode_type_t type, vnode_t **out_vn);
 
