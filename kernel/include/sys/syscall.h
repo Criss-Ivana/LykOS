@@ -3,6 +3,21 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include "mm/vm.h"
+#include "proc/proc.h"
+#include "proc/sched.h"
+#include "proc/thread.h"
+
+// Helpers
+
+proc_t *sys_curr_proc();
+
+thread_t *sys_curr_thread();
+
+vm_addrspace_t *sys_curr_as();
+
+// System calls
+
 typedef struct
 {
     size_t value;

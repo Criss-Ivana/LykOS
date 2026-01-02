@@ -23,6 +23,7 @@ typedef struct proc
     list_t threads;
 
     fd_table_t fd_table;
+    const char *cwd;
 
     list_node_t proc_list_node;
     spinlock_t slock;

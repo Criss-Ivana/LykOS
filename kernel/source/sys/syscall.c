@@ -13,3 +13,20 @@ const void* syscall_table[] = {
 };
 
 const uint64_t syscall_table_length = sizeof(syscall_table) / sizeof(void*);
+
+// Helpers
+
+proc_t *sys_curr_proc()
+{
+    return sched_get_curr_thread()->owner;
+}
+
+thread_t *sys_curr_thread()
+{
+    return sched_get_curr_thread();
+}
+
+vm_addrspace_t *sys_curr_as()
+{
+    return sched_get_curr_thread()->owner->as;
+}

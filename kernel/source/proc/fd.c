@@ -1,6 +1,32 @@
 #include "proc/fd.h"
+
 #include "mm/heap.h"
+#include "panic.h"
 #include "sync/spinlock.h"
+
+// FD lifetime
+
+static inline void fd_init_ref(fd_entry_t *entry)
+{
+    atomic_init(&entry->refcount, 1);
+}
+
+static inline void fd_ref(fd_entry_t *entry)
+{
+    atomic_fetch_add_explicit(&entry->refcount, 1, memory_order_relaxed);
+}
+
+static inline void fd_unref(fd_entry_t *entry)
+{
+    if (atomic_fetch_sub_explicit(&entry->refcount, 1, memory_order_acq_rel) == 1)
+    {
+        vnode_unref(entry->vnode);
+        entry->vnode = NULL;
+        entry->offset = 0;
+    }
+}
+
+//
 
 void fd_table_init(fd_table_t *table)
 {
@@ -8,7 +34,7 @@ void fd_table_init(fd_table_t *table)
     table->capacity = MAX_FD_COUNT;
     table->lock = SPINLOCK_INIT;
 
-    for(size_t i=0; i < table->capacity; i++)
+    for (size_t i = 0; i < table->capacity; i++)
     {
         table->fds[i].vnode = NULL;
         table->fds[i].offset = 0;
@@ -19,6 +45,12 @@ void fd_table_destroy(fd_table_t *table)
 {
     spinlock_acquire(&table->lock);
 
+    for (size_t i = 0; i < table->capacity; i++)
+    {
+        fd_entry_t *entry = &table->fds[i];
+        if (entry->vnode != NULL)
+            vnode_unref(entry->vnode);
+    }
     heap_free(table->fds);
 
     spinlock_release(&table->lock);
@@ -32,8 +64,13 @@ bool fd_alloc(fd_table_t *table, vnode_t *vnode, int *fd)
     {
         if (table->fds[i].vnode == NULL)
         {
-            table->fds[i].vnode = vnode;
-            table->fds[i].offset = 0;
+            fd_entry_t *entry = &table->fds[i];
+
+            entry->vnode = vnode;
+            vnode_ref(vnode);
+            entry->offset = 0;
+            fd_init_ref(entry);
+
             *fd = (int)i;
             spinlock_release(&table->lock);
             return true;
@@ -51,6 +88,9 @@ bool fd_alloc(fd_table_t *table, vnode_t *vnode, int *fd)
     if (new_capacity > MAX_FD_COUNT)
         new_capacity = MAX_FD_COUNT;
 
+    // TODO: reallocate FD table properly!
+    panic("Cannot reallocate FD table for now!");
+
     table->fds = heap_realloc(
         table->fds,
         old_capacity * sizeof(fd_entry_t),
@@ -61,41 +101,56 @@ bool fd_alloc(fd_table_t *table, vnode_t *vnode, int *fd)
 
     for (size_t i = old_capacity; i < new_capacity; i++)
     {
-        table->fds[i].vnode = NULL;
-        table->fds[i].offset = 0;
+        fd_entry_t *entry = &table->fds[i];
+
+        entry->vnode = NULL;
+        entry->offset = 0;
+        fd_init_ref(entry);
     }
 
-    table->fds[old_capacity].vnode = vnode;
-    table->fds[old_capacity].offset = 0;
-    *fd = (int)old_capacity;
+    fd_entry_t *entry = &table->fds[old_capacity];
 
+    entry->vnode = vnode;
+    vnode_ref(vnode);
+    entry->offset = 0;
+    fd_ref(entry);
+    *fd = (int)old_capacity;
     spinlock_release(&table->lock);
     return true;
 }
 
-void fd_free(fd_table_t *table, int fd)
+bool fd_free(fd_table_t *table, int fd)
 {
     spinlock_acquire(&table->lock);
 
-    if(fd>=0 && (size_t)fd < table->capacity)
+    if (fd >= 0 && (size_t)fd < table->capacity && table->fds[fd].vnode != NULL)
     {
-        table->fds[fd].vnode = NULL;
-        table->fds[fd].offset = 0;
+        fd_unref(&table->fds[fd]);
+        spinlock_release(&table->lock);
+        return true;
     }
+
     spinlock_release(&table->lock);
+    return false;
 }
 
 fd_entry_t *fd_get(fd_table_t *table, int fd)
 {
     spinlock_acquire(&table->lock);
 
-    if(fd>=0 && (size_t)fd < table->capacity && table->fds[fd].vnode != NULL)
+    if (fd >= 0 && (size_t)fd < table->capacity && table->fds[fd].vnode != NULL)
     {
         fd_entry_t *entry = &table->fds[fd];
+        fd_ref(entry);
         spinlock_release(&table->lock);
         return entry;
     }
 
     spinlock_release(&table->lock);
     return NULL;
+}
+
+void fd_put(fd_entry_t *entry)
+{
+    fd_unref(entry);
 }

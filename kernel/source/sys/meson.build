@@ -1,6 +1,6 @@
 c_files += files(
     'debug.c',
-    'io.c',
+    'fileio.c',
     'memory.c',
     'misc.c',
     'proc.c',
