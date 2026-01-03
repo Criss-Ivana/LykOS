@@ -61,7 +61,7 @@ int vm_map_vnode(vm_addrspace_t *as, uintptr_t vaddr, size_t length,
                  uintptr_t *out);
 int vm_unmap(vm_addrspace_t *as, uintptr_t vaddr, size_t length);
 
-// Utils
+// Userspace utils
 
 size_t vm_copy_to_user(vm_addrspace_t *dest_as, uintptr_t dest, void *src, size_t count);
 size_t vm_copy_from_user(vm_addrspace_t *src_as, void *dest, uintptr_t src, size_t count);

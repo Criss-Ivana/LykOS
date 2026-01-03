@@ -84,27 +84,25 @@ static void insert_seg(vm_addrspace_t *as, vm_segment_t *seg)
 
 // Mapping and unmapping
 
-int vm_map_direct(vm_addrspace_t *as, uintptr_t vaddr, size_t length,
-                  int prot, int flags,
-                  uintptr_t offset,
-                  uintptr_t *out)
+static int resolve_vaddr(vm_addrspace_t *as, uintptr_t vaddr, uintptr_t length, int flags, uintptr_t *out)
 {
-    (void)flags;
+    if (vaddr < as->limit_low || length > as->limit_high - vaddr)
+    {
+        if (flags & (VM_MAP_FIXED | VM_MAP_FIXED_NOREPLACE))
+            return EINVAL;
+        if (!find_space(as, length, &vaddr))
+            return ENOMEM;
+    }
 
-    spinlock_acquire(&as->slock);
-
-    vm_segment_t *seg = heap_alloc(sizeof(vm_segment_t));
-    *seg = (vm_segment_t) {
-        .start = vaddr,
-        .length = length,
-        .offset = offset
-    };
-    insert_seg(as, seg);
-
-    for (size_t i = 0; i < length; i += ARCH_PAGE_GRAN)
-        arch_paging_map_page(as->page_map, vaddr + i, offset + i, ARCH_PAGE_GRAN, prot);
-
-    spinlock_release(&as->slock);
+    if (check_collision(as, vaddr, length))
+    {
+        if (flags & VM_MAP_FIXED_NOREPLACE)
+            return EEXIST;
+        if (flags & VM_MAP_FIXED)
+            return EINVAL;
+        if (!find_space(as, length, &vaddr))
+            return ENOMEM;
+    }
 
     *out = vaddr;
     return EOK;
@@ -119,20 +117,11 @@ int vm_map_vnode(vm_addrspace_t *as, uintptr_t vaddr, size_t length,
 
     spinlock_acquire(&as->slock);
 
-    if (vaddr < as->limit_low || vaddr + length > as->limit_high)
+    int ret = resolve_vaddr(as, vaddr, length, flags, &vaddr);
+    if (ret != EOK)
     {
-        if (flags & VM_MAP_FIXED || flags & VM_MAP_FIXED_NOREPLACE)
-            return EINVAL;
-        if (!find_space(as, length, &vaddr))
-            return ENOMEM;
-    }
-    if (check_collision(as, vaddr, length))
-    {
-        if (flags & VM_MAP_FIXED_NOREPLACE)
-            return EEXIST;
-        else if (!(flags & VM_MAP_FIXED))
-            if (!find_space(as, length, &vaddr))
-                return ENOMEM;
+        spinlock_release(&as->slock);
+        return ret;
     }
 
     vm_segment_t *seg = heap_alloc(sizeof(vm_segment_t));
@@ -177,7 +166,7 @@ int vm_unmap(vm_addrspace_t *as, uintptr_t vaddr, size_t length)
     return EOK;
 }
 
-
+// Userspace utils
 
 size_t vm_copy_to_user(vm_addrspace_t *dest_as, uintptr_t dest, void *src, size_t count)
 {
@@ -282,6 +271,47 @@ void vm_addrspace_load(vm_addrspace_t *as)
 
 // Initialization
 
+static void do_big_mappings(uintptr_t vaddr, uintptr_t paddr, size_t length)
+{
+    vm_segment_t *seg = heap_alloc(sizeof(vm_segment_t));
+    *seg = (vm_segment_t) {
+        .start = vaddr,
+        .length = length,
+        .offset = paddr
+    };
+    insert_seg(vm_kernel_as, seg);
+
+    size_t i = 0; // Progress
+    while (i < length)
+    {
+        size_t remaining = length - i;
+        size_t page_size;
+
+        // Try largest -> smallest
+        for (int j = ARCH_PAGE_SIZES_LEN - 1; j >= 0; j--)
+        {
+            page_size = ARCH_PAGE_SIZES[j];
+            if ((vaddr + i) % page_size == 0
+            &&  (paddr + i) % page_size == 0
+            &&  remaining >= page_size)
+                break;
+        }
+
+        if (page_size > 0x1000)
+            log(LOG_DEBUG, "> %llx", page_size);
+
+        arch_paging_map_page(
+            vm_kernel_as->page_map,
+            vaddr + i,
+            paddr + i,
+            page_size,
+            MM_PROT_EXEC | MM_PROT_WRITE
+        );
+
+        i += page_size;
+    }
+}
+
 void vm_init()
 {
     arch_paging_init();
@@ -290,29 +320,19 @@ void vm_init()
     vm_kernel_as->limit_low = HHDM;
     vm_kernel_as->limit_high = ARCH_KERNEL_MAX_VIRT;
 
-    uintptr_t out;
-
     // Directly map the first 4GiB of system memory to the HHDM
     // region as per the Limine specification.
-    vm_map_direct(
-        vm_kernel_as,
+    do_big_mappings(
         HHDM,
-        4 * GIB,
-        MM_PROT_WRITE | MM_PROT_EXEC,
         0,
-        0,
-        &out
+        4 * GIB
     );
 
     // Map the kernel physical region to its virtual base.
-    vm_map_direct(
-        vm_kernel_as,
+    do_big_mappings(
         bootreq_kernel_addr.response->virtual_base,
-        2 * GIB,
-        MM_PROT_WRITE | MM_PROT_EXEC,
-        0,
         bootreq_kernel_addr.response->physical_base,
-        &out
+        2 * GIB
     );
 
     // Map usable physical memory regions.
@@ -323,31 +343,34 @@ void vm_init()
         ||  e->type == LIMINE_MEMMAP_BAD_MEMORY)
             continue;
 
-        uintptr_t base   = FLOOR(e->base, ARCH_PAGE_GRAN);
-        uint64_t  length = CEIL(e->base + e->length, ARCH_PAGE_GRAN) - base;
-
-        if (base == 0x0)
-            continue;
-
-        vm_map_direct(
-            vm_kernel_as,
-            base + HHDM,
-            length,
-            MM_PROT_WRITE | MM_PROT_EXEC,
-            0,
-            base,
-            &out
-        );
+        uintptr_t start = FLOOR(e->base, ARCH_PAGE_GRAN);
+        uintptr_t end = CEIL(e->base + e->length, ARCH_PAGE_GRAN);
+        uint64_t length = end - start;
 
         log(LOG_DEBUG,
             "[%2lu] type=%-2d phys=%#018lx virt=%#018lx len=%#010lx (%4llu MiB + %4llu KiB)",
             i,
             e->type,
-            base,
-            base + HHDM,
+            start,
+            start + HHDM,
             length,
             length / MIB,
             (length % MIB) / KIB
+        );
+
+        if (end < 4 * GIB)
+            continue;
+
+        if (start < 4 * GIB)
+            start = 4 * GIB;
+        length = end - start;
+        if (length == 0)
+            continue;
+
+        do_big_mappings(
+            start + HHDM,
+            start,
+            length
         );
     }
 
