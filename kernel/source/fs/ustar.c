@@ -4,6 +4,7 @@
 #include <stdint.h>
 
 #include "log.h"
+#include "panic.h"
 #include "mm/heap.h"
 #include "mm/mm.h"
 
@@ -47,49 +48,14 @@ static int ustar_validate_checksum(const ustar_header_t *header)
     return sum == stored;
 }
 
-// Main logic to load archive
-static vnode_t *create_path(vnode_t *root, const char *path, int is_dir)
+int ustar_extract(const void *archive, uint64_t archive_size, const char *dest_path)
 {
-    if (!path || !*path) return root;
-
-    char *path_copy = strdup(path);
-    char *saveptr;
-    char *token = strtok_r(path_copy, "/", &saveptr);
-    vnode_t *current = root;
-
-    while (token)
-    {
-        char *next_token = strtok_r(NULL, "/", &saveptr);
-        int is_last = (next_token == NULL);
-
-        vnode_t *child = NULL;
-        if (current->ops->lookup(current, token, &child) != EOK || !child)
-        {
-            vnode_type_t type;
-            if (is_last && !is_dir)
-                type = VREG;
-            else
-                type = VDIR;
-
-            if(vfs_create(current, token, type, &child) != EOK)
-            {
-                heap_free(path_copy);
-                return NULL;
-            }
-        }
-
-        current = child;
-        token = next_token;
-    }
-
-    heap_free(path_copy);
-    return current;
-}
-
-int ustar_extract(const void *archive, uint64_t archive_size, vnode_t *dest_vn)
-{
-    if (!archive || !dest_vn)
+    if (!archive || !dest_path)
         return EINVAL;
+
+    vnode_t *dest_vn;
+    if (vfs_lookup(dest_path, &dest_vn) != EOK)
+        panic("USTAR: destination path not found");
 
     const uint8_t *data = (const uint8_t *)archive;
     uint64_t offset = 0;
@@ -115,30 +81,47 @@ int ustar_extract(const void *archive, uint64_t archive_size, vnode_t *dest_vn)
         size_t file_size = ustar_get_size(header);
         offset += USTAR_BLOCK_SIZE;
 
-        // build full path
-        char full_path[256];
+        // build dest_path + archive
+        char entry_path[PATH_MAX_NAME_LEN];
         if (header->prefix[0] != '\0')
-            snprintf(full_path, sizeof(full_path), "%s%s", header->prefix, header->name);
+            snprintf(entry_path, sizeof(entry_path), "%s%s", header->prefix, header->name);
         else
-            strncpy(full_path, header->name, sizeof(full_path) - 1);
+            snprintf(entry_path, sizeof(entry_path), "%s", header->name);
+
+        char full_path[PATH_MAX_NAME_LEN];
+        size_t base_len = strlen(dest_path);
+        int needs_slash = base_len && dest_path[base_len - 1] != '/';
+        snprintf(full_path, sizeof(full_path), "%s%s%s", dest_path, needs_slash ? "/" : "", entry_path);
 
         switch (header->typeflag)
         {
             case USTAR_DIRECTORY:
             {
-                create_path(dest_vn, full_path, 1);
+                vnode_t *dir_vn = NULL;
+                int ret = vfs_create(full_path, VDIR, &dir_vn);
+                if (ret != EOK && ret != EEXIST)
+                    log(LOG_ERROR, "USTAR: failed to create directory %s", full_path);
                 break;
             }
 
             case USTAR_REGULAR:
             {
-                vnode_t *file_vn = create_path(dest_vn, full_path, 0);
-                if(file_vn && file_size > 0)
+                vnode_t *file_vn = NULL;
+                int ret = vfs_create(full_path, VREG, &file_vn);
+                if (ret == EEXIST)
+                    ret = vfs_lookup(full_path, &file_vn);
+                if (ret != EOK)
+                {
+                    log(LOG_ERROR, "USTAR: failed to create file %s", full_path);
+                    break;
+                }
+
+                if (file_vn && file_size > 0)
                 {
                     uint64_t written;
                     if (vfs_write(file_vn, (void *)(data + offset), 0, file_size, &written) != EOK
                     ||  written != file_size)
-                        log(LOG_ERROR, "USTAR: failed to write to created file");
+                        log(LOG_ERROR, "USTAR: failed to write to created file %s", full_path);
                 }
                 break;
             }
@@ -151,6 +134,6 @@ int ustar_extract(const void *archive, uint64_t archive_size, vnode_t *dest_vn)
         offset += blocks * USTAR_BLOCK_SIZE;
     }
 
-    log(LOG_INFO, "USTAR: loaded archive into filesystem");
+    log(LOG_INFO, "Loaded archive into filesystem");
     return EOK;
 }
