@@ -44,10 +44,18 @@ static void to_upper(char *str)
     }
 }
 
-void vlog(log_level_t level, const char *component, const char *format, va_list vargs)
+void _vlog(log_level_t level, const char *component, const char *format, va_list vargs)
 {
     ASSERT(component);
 
+    char comp_name[64];
+    strcpy(comp_name, component);
+    char *p = strstr(comp_name, ".c");
+    if (p)
+    {
+        *p = '\0';
+        to_upper(comp_name);
+    }
     char msg[256];
     vsnprintf(msg, sizeof(msg), format, vargs);
 
@@ -61,15 +69,17 @@ void vlog(log_level_t level, const char *component, const char *format, va_list 
                  now.min,
                  now.sec,
                  level_to_name(level),
-                 component,
+                 comp_name,
                  msg);
     }
     else
+    {
         snprintf(out, sizeof(out),
                  "[__:__:__|%5s|%s] %s",
                  level_to_name(level),
-                 component,
+                 comp_name,
                  msg);
+    }
 
     spinlock_acquire(&slock);
 
@@ -88,15 +98,7 @@ void _log(log_level_t level, const char *component, const char *format, ...)
     va_list vargs;
     va_start(vargs, format);
 
-    char comp_name[64];
-    strcpy(comp_name, component);
-    char *p = strstr(comp_name, ".c");
-    if (p)
-    {
-        *p = '\0';
-        to_upper(comp_name);
-    }
-    vlog(level, comp_name, format, vargs);
+    _vlog(level, component, format, vargs);
 
     va_end(vargs);
 }
