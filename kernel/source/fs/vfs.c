@@ -98,7 +98,7 @@ int vfs_write(vnode_t *vn, void *buffer, uint64_t offset, uint64_t count, uint64
     return vn->ops->write(vn, buffer, offset, count, out_bytes_written);
 }
 
-int vfs_lookup(const char *path, vnode_t **out)
+int vfs_lookup(const char *path, vnode_t **out_vn)
 {
     vnode_t *curr;
     path = vfs_get_mountpoint(path, &curr);
@@ -117,7 +117,7 @@ int vfs_lookup(const char *path, vnode_t **out)
         path = comp + comp_len;
     }
 
-    *out = curr;
+    *out_vn = curr;
     return EOK;
 }
 

@@ -37,18 +37,20 @@ vfs_ops_t ramfs_ops = {
     .get_root = ramfs_get_root
 };
 
-static int read  (vnode_t *self, void *buffer, uint64_t offset, uint64_t count, uint64_t *out);
-static int write (vnode_t *self, const void *buffer, uint64_t offset, uint64_t count, uint64_t *out);
+static int read  (vnode_t *self, void *buf, uint64_t offset, uint64_t count, uint64_t *out);
+static int write (vnode_t *self, const void *buf, uint64_t offset, uint64_t count, uint64_t *out);
 static int lookup(vnode_t *self, const char *name, vnode_t **out);
 static int create(vnode_t *self, const char *name, vnode_type_t t, vnode_t **out);
 static int remove(vnode_t *self, const char *name);
+static int readdir(vnode_t *self, vfs_dirent_t **out_entries, size_t *out_count);
 
 vnode_ops_t ramfs_node_ops = {
     .read   = read,
     .write  = write,
     .lookup = lookup,
     .create = create,
-    .remove = remove
+    .remove = remove,
+    .readdir = readdir
 };
 
 // Filesystem Operations
@@ -60,12 +62,12 @@ static vnode_t *ramfs_get_root(vfs_t *self)
 
 // Node Operations
 
-static int read(vnode_t *self, void *buffer, uint64_t offset, uint64_t count, uint64_t *out)
+static int read(vnode_t *self, void *buf, uint64_t offset, uint64_t count, uint64_t *out)
 {
     ramfs_node_t *node = (ramfs_node_t *)self;
 
     uint64_t copied = 0;
-    uint8_t *dst = buffer;
+    uint8_t *dst = buf;
 
     while (copied < count)
     {
@@ -91,12 +93,12 @@ static int read(vnode_t *self, void *buffer, uint64_t offset, uint64_t count, ui
     return EOK;
 }
 
-static int write(vnode_t *self, const void *buffer, uint64_t offset, uint64_t count, uint64_t *out)
+static int write(vnode_t *self, const void *buf, uint64_t offset, uint64_t count, uint64_t *out)
 {
     ramfs_node_t *node = (ramfs_node_t *)self;
 
     uint64_t written = 0;
-    const uint8_t *src = buffer;
+    const uint8_t *src = buf;
 
     while (written < count)
     {
@@ -211,6 +213,41 @@ static int remove(vnode_t *self, const char *name)
     }
     
     return ENOENT;
+}
+
+static int readdir(vnode_t *self, vfs_dirent_t **out_entries, size_t *out_count)
+{
+    if (!out_entries || !out_count)
+        return EINVAL;
+    if (self->type != VDIR)
+        return ENOTDIR;
+
+    ramfs_node_t *dir = (ramfs_node_t *)self;
+    size_t entry_count = dir->children.length;
+
+    if (!entry_count)
+    {
+        *out_entries = NULL;
+        *out_count = 0;
+        self->atime = arch_clock_get_unix_time();
+        return EOK;
+    }
+    
+    vfs_dirent_t *entries = heap_alloc(entry_count * sizeof(vfs_dirent_t));    
+    size_t index = 0;
+    
+    FOREACH(n, dir->children)
+    {
+        ramfs_node_t *child = LIST_GET_CONTAINER(n, ramfs_node_t, list_node);
+        strcpy(entries[index].name, child->vn.name);
+        entries[index].type = child->vn.type;
+        index++;
+    }
+    
+    self->atime = arch_clock_get_unix_time();
+    *out_entries = entries;
+    *out_count = entry_count;
+    return EOK;
 }
 
 static int ioctl(vnode_t *vn, uint64_t cmd, void *arg)
