@@ -1,7 +1,11 @@
 #include "proc/proc.h"
 
+#include "assert.h"
 #include "mm/heap.h"
 #include "mm/vm.h"
+#include "proc/fd.h"
+#include "proc/thread.h"
+#include "utils/list.h"
 #include "utils/string.h"
 
 static uint64_t next_pid = 0;
@@ -25,7 +29,7 @@ proc_t *proc_create(const char *name, bool user)
         .fd_table = proc->fd_table
     };
 
-    fd_table_init(&proc->fd_table);
+    fd_table_init(proc->fd_table);
 
     spinlock_acquire(&slock);
     next_pid++;
@@ -37,7 +41,32 @@ proc_t *proc_create(const char *name, bool user)
 
 void proc_kill(proc_t *proc)
 {
-    fd_table_destroy(&proc->fd_table);
+    fd_table_destroy(proc->fd_table);
     vm_addrspace_destroy(proc->as);
+    heap_free(proc);
+}
+
+void proc_destroy(proc_t *proc)
+{
+    ASSERT(proc && proc->as);
+
+    vm_addrspace_destroy(proc->as);
+    proc->as = NULL;
+
+    fd_table_destroy(proc->fd_table);
+
+    while (!list_is_empty(&proc->threads))
+    {
+        //list_node_t *node = list_pop_head(&proc->threads);
+
+        /* TO-DO:
+        - get corresponding thread
+        - destroy thread (add func in thread.h?)
+        */
+    }
+
+    list_remove(&proc_list, &proc->proc_list_node);
+
+    spinlock_release(&proc->slock);
     heap_free(proc);
 }

@@ -26,7 +26,7 @@ static spinlock_t slock;
     spinlock_release(&slock);
 
     while (true)
-        sched_yield();
+        sched_yield(THREAD_STATE_READY);
 }
 
 void smp_init()

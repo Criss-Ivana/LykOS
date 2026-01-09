@@ -27,6 +27,9 @@ typedef struct
     uintptr_t start;
     size_t length;
 
+    int prot;
+    int flags;
+
     vnode_t *vn;
     uintptr_t offset;
 
@@ -71,6 +74,10 @@ size_t vm_zero_out_user(vm_addrspace_t *dest_as, uintptr_t dest, void *src, size
 
 vm_addrspace_t *vm_addrspace_create();
 void vm_addrspace_destroy(vm_addrspace_t *as);
+
+// Address space cloning
+
+vm_addrspace_t *vm_addrspace_clone(vm_addrspace_t *as);
 
 // Address space loading
 

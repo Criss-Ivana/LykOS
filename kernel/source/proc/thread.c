@@ -1,4 +1,5 @@
 #include "arch/thread.h"
+#include "assert.h"
 #include "proc/thread.h"
 
 #include "mm/heap.h"
@@ -30,4 +31,10 @@ thread_t *thread_create(proc_t *proc, uintptr_t entry)
     spinlock_release(&proc->slock);
 
     return thread;
+}
+
+void thread_destroy(thread_t *thread)
+{
+    ASSERT(thread && thread->status == THREAD_STATE_TERMINATED);
+
 }

@@ -1,3 +1,4 @@
+#include "proc/fd.h"
 #include "sys/syscall.h"
 
 #include "proc/proc.h"
@@ -54,7 +55,7 @@ sys_ret_t syscall_open(const char *path, int flags)
     }
 
     int fd;
-    if (!fd_alloc(&sys_curr_proc()->fd_table, vn, &fd))
+    if (!fd_alloc(sys_curr_proc()->fd_table, vn, (fd_acc_mode_t) {true, true, true, true}, &fd))
     {
         vnode_unref(vn);
         return (sys_ret_t){0, EMFILE};
@@ -67,19 +68,19 @@ sys_ret_t syscall_open(const char *path, int flags)
 
 sys_ret_t syscall_close(int fd)
 {
-    return (sys_ret_t) {0, fd_free(&sys_curr_proc()->fd_table, fd) ? EOK : EBADF};
+    return (sys_ret_t) {0, fd_free(sys_curr_proc()->fd_table, fd) ? EOK : EBADF};
 }
 
 sys_ret_t syscall_read(int fd, void *buf, uint64_t count)
 {
-    fd_entry_t *fd_entry = fd_get(&sys_curr_proc()->fd_table, fd);
-    if (fd_entry == NULL)
+    fd_entry_t fd_entry = fd_get(sys_curr_proc()->fd_table, fd);
+    if (fd_entry.vnode == NULL)
         return (sys_ret_t) {0, EBADF};
 
     uint64_t read_bytes;
-    int err = vfs_read(fd_entry->vnode, buf, fd_entry->offset, count, &read_bytes);
+    int err = vfs_read(fd_entry.vnode, buf, fd_entry.offset, count, &read_bytes);
 
-    fd_put(fd_entry);
+    fd_put(sys_curr_proc()->fd_table, fd);
 
     if (err != EOK)
         return (sys_ret_t) {0, err};
@@ -94,8 +95,8 @@ sys_ret_t syscall_read(int fd, void *buf, uint64_t count)
 
 sys_ret_t syscall_seek(int fd, uint64_t offset, int whence)
 {
-    fd_entry_t *entry = fd_get(&sys_curr_proc()->fd_table, fd);
-    if (entry == NULL)
+    fd_entry_t entry = fd_get(sys_curr_proc()->fd_table, fd);
+    if (entry.vnode == NULL)
         return (sys_ret_t){0, EBADF};
 
     uint64_t new_off;
@@ -106,36 +107,36 @@ sys_ret_t syscall_seek(int fd, uint64_t offset, int whence)
             new_off = offset;
             break;
         case SEEK_CUR:
-            new_off = entry->offset + offset;
+            new_off = entry.offset + offset;
             break;
         case SEEK_END:
-            new_off = entry->vnode->size + offset;
+            new_off = entry.vnode->size + offset;
             break;
         case SEEK_HOLE:
         case SEEK_DATA:
-            fd_put(entry);
+            fd_put(sys_curr_proc()->fd_table, fd);
             return (sys_ret_t) {0, ENOTSUP};
         default:
-            fd_put(entry);
+            fd_put(sys_curr_proc()->fd_table, fd);
             return (sys_ret_t) {0, EINVAL};
     }
 
-    entry->offset = new_off;
-    fd_put(entry);
+    entry.offset = new_off;
+    fd_put(sys_curr_proc()->fd_table, fd);
 
     return (sys_ret_t) {new_off, EOK};
 }
 
 sys_ret_t syscall_write(int fd, void *buf, uint64_t count)
 {
-    fd_entry_t *fd_entry = fd_get(&sys_curr_proc()->fd_table, fd);
-    if (fd_entry == NULL)
+    fd_entry_t fd_entry = fd_get(sys_curr_proc()->fd_table, fd);
+    if (fd_entry.vnode == NULL)
         return (sys_ret_t) {0, EBADF};
 
     uint64_t written_bytes;
-    int err = vfs_write(fd_entry->vnode, buf, fd_entry->offset, count, &written_bytes);
+    int err = vfs_write(fd_entry.vnode, buf, fd_entry.offset, count, &written_bytes);
 
-    fd_put(fd_entry);
+    fd_put(sys_curr_proc()->fd_table, fd);
 
     if (err != EOK)
         return (sys_ret_t) {0, err};
