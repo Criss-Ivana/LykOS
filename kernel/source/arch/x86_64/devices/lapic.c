@@ -1,6 +1,7 @@
+// API
+#include "arch/timer.h"
 #include "arch/x86_64/devices/lapic.h"
-
-#include "arch/irq.h"
+//
 #include "arch/x86_64/devices/pit.h"
 #include "arch/x86_64/msr.h"
 #include "hhdm.h"
@@ -56,12 +57,7 @@ void arch_timer_oneshot(size_t us)
     lapic_write(REG_TIMER_INITIAL_COUNT, us * g_lapic_timer_freq / 1'000'000);
 }
 
-size_t arch_timer_get_local_irq()
-{
-    return IRQ;
-}
-
-//
+// lapic.h
 
 void x86_64_lapic_send_eoi()
 {
@@ -74,10 +70,10 @@ void x86_64_lapic_ipi(uint32_t lapic_id, uint32_t vec)
     lapic_write(REG_ICR0, vec);
 }
 
-void x86_64_lapic_init()
+// Initialization
+
+void x86_64_lapic_init_cpu()
 {
-    if (!arch_irq_reserve_local(IRQ))
-        panic("Could not reserve IRQ %d for LAPIC!", IRQ);
     g_lapic_base = (x86_64_msr_read(X86_64_MSR_APIC_BASE) & 0xFFFFFFFFFF000) + HHDM;
     lapic_write(REG_SPURIOUS, (1 << 8) | 0xFF);
 
