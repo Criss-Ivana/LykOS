@@ -172,6 +172,41 @@ int vfs_ioctl(vnode_t *vn, uint64_t cmd, void *arg)
     return vn->ops->ioctl(vn, cmd, arg);
 }
 
+static int vnode_destroy(vnode_t *vn)
+{
+    if (!vn)
+        return;
+
+    // Generic fallback
+    vn->ops = NULL;
+    vn->inode = NULL;
+    vn->size = 0;
+    vn->type = VNON;
+    return EOK;
+}
+
+int vfs_open(vnode_t *vn, int flags, void *cred)
+{
+    if (!vn)
+        return EINVAL;
+
+    // TODO: permission checks
+
+    vnode_ref(vn);
+    return EOK;
+}
+
+int vfs_close(vnode_t *vn, int flags, void *cred)
+{
+    if (!vn)
+        return EINVAL;
+
+    // TODO: permission checks
+
+    vnode_unref(vn);
+    return EOK;
+}
+
 void vfs_init()
 {
     vfs_t *ramfs = ramfs_create();
